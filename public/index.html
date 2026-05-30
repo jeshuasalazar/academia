@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>aiLearning — Plataforma Premium de E-Learning</title>
+  
+  <!-- Tipografías de Google Fonts de alta gama -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Iconos Lucide de alta calidad -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Archivo de estilos -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme"> <!-- Tema oscuro por defecto -->
+
+  <!-- TOAST NOTIFICATION (Para copiado de prompts y alertas) -->
+  <div id="toast" class="toast">¡Copiado al portapapeles!</div>
+
+  <!-- ==========================================
+       🔑 PANTALLA DE INGRESO (LOGIN / REGISTER)
+       ========================================== -->
+  <div id="auth-container" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="logo">
+          <div class="logo-icon">🚀</div>
+          <span class="logo-text">ai<span class="text-blue">Learning</span></span>
+        </div>
+        <p class="auth-sub" id="auth-subtitle">Inicia sesión para continuar aprendiendo</p>
+      </div>
+
+      <!-- Formulario de Login -->
+      <form id="login-form" class="auth-form">
+        <div class="input-group">
+          <label for="login-email">Correo Electrónico</label>
+          <input type="email" id="login-email" placeholder="ejemplo@ailearning.mx" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-blue btn-full">
+          <span>Ingresar a la Plataforma</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+        <p class="auth-toggle">¿No tienes cuenta? <a href="#" id="go-to-register">Regístrate gratis</a></p>
+      </form>
+
+      <!-- Formulario de Registro -->
+      <form id="register-form" class="auth-form hidden">
+        <div class="input-group">
+          <label for="register-name">Nombre Completo</label>
+          <input type="text" id="register-name" placeholder="Tu nombre" required>
+        </div>
+        <div class="input-group">
+          <label for="register-email">Correo Electrónico</label>
+          <input type="email" id="register-email" placeholder="ejemplo@ailearning.mx" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="register-password">Contraseña</label>
+          <input type="password" id="register-password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-blue btn-full">
+          <span>Crear Cuenta</span>
+          <i data-lucide="user-plus"></i>
+        </button>
+        <p class="auth-toggle">¿Ya tienes cuenta? <a href="#" id="go-to-login">Inicia sesión</a></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       💻 CONTENEDOR PRINCIPAL DEL APLICATIVO
+       ========================================== -->
+  <div id="app-container" class="app-shell hidden">
+    
+    <!-- 1. BARRA LATERAL (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">🚀</div>
+          <span class="logo-text">ai<span class="text-blue">Learning</span></span>
+        </div>
+        <div class="theme-toggle" id="theme-btn" title="Cambiar Tema">
+          <i data-lucide="sun" class="sun-icon"></i>
+          <i data-lucide="moon" class="moon-icon"></i>
+        </div>
+      </div>
+
+      <!-- Datos de Perfil del Alumno -->
+      <div class="student-profile" id="sidebar-profile">
+        <div class="avatar" id="student-avatar" style="background: var(--coral);">M</div>
+        <div class="info">
+          <h4 id="student-name">Cargando...</h4>
+          <span class="plan-badge" id="student-role">Plan Premium</span>
+        </div>
+      </div>
+
+      <!-- Navegación del Dashboard -->
+      <nav class="sidebar-nav">
+        <a href="#/dashboard" class="nav-item active" id="nav-dashboard">
+          <i data-lucide="home"></i>
+          <span>Inicio</span>
+        </a>
+        <a href="#/courses" class="nav-item" id="nav-courses">
+          <i data-lucide="graduation-cap"></i>
+          <span>Cursos</span>
+        </a>
+        <a href="#/prompts" class="nav-item" id="nav-prompts">
+          <i data-lucide="terminal"></i>
+          <span>Biblioteca Prompts</span>
+        </a>
+        <a href="#/calendar" class="nav-item" id="nav-calendar">
+          <i data-lucide="calendar"></i>
+          <span>Clases en Vivo</span>
+        </a>
+        <a href="#/admin" class="nav-item hidden" id="nav-admin">
+          <i data-lucide="shield-check"></i>
+          <span>Administrador</span>
+        </a>
+      </nav>
+
+      <!-- Widget de Calendario Sidebar -->
+      <div class="sidebar-widget calendar-widget">
+        <div class="widget-header">
+          <span class="month-title" id="calendar-month-year">Mayo 2026</span>
+          <div class="nav-arrows">
+            <button id="prev-month-btn"><i data-lucide="chevron-left"></i></button>
+            <button id="next-month-btn"><i data-lucide="chevron-right"></i></button>
+          </div>
+        </div>
+        
+        <!-- Días del Calendario -->
+        <div class="calendar-grid">
+          <div class="day-label">D</div>
+          <div class="day-label">L</div>
+          <div class="day-label">M</div>
+          <div class="day-label">M</div>
+          <div class="day-label">J</div>
+          <div class="day-label">V</div>
+          <div class="day-label">S</div>
+        </div>
+        <div class="calendar-days-container" id="calendar-days">
+          <!-- Días renderizados dinámicamente -->
+        </div>
+
+        <!-- Próxima Llamada en Vivo -->
+        <div class="next-call-card" id="upcoming-call-widget">
+          <div class="call-icon"><i data-lucide="video"></i></div>
+          <div class="call-info">
+            <h5>Clase en Vivo</h5>
+            <p id="upcoming-call-time">Cargando fecha...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón de Cerrar Sesión -->
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logout-btn">
+          <i data-lucide="log-out"></i>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. CONTENEDOR PRINCIPAL DE CONTENIDO (MAIN CANVAS) -->
+    <main class="main-content">
+      
+      <!-- Encabezado del Canvas -->
+      <header class="app-header">
+        <div class="header-left">
+          <h2 id="view-title" class="view-title">Dashboard</h2>
+        </div>
+        <div class="header-right">
+          <div class="user-quick-profile">
+            <span class="user-xp" id="header-user-xp">XP: 0</span>
+            <div class="quick-avatar" id="header-avatar" style="background: var(--coral);">M</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- SECCIÓN DINÁMICA DE VISTAS (HASH ROUTER CANVAS) -->
+      <div class="content-canvas">
+
+        <!-- ==========================================
+             🏠 VISTA 1: DASHBOARD DE INICIO
+             ========================================== -->
+        <div id="view-dashboard-section" class="view-section">
+          <div class="dashboard-grid">
+            
+            <!-- Columna Izquierda: Introducción y Nivel Actual -->
+            <div class="dash-left-col">
+              
+              <!-- Tarjeta de Bienvenida y Vídeo Inicial -->
+              <div class="welcome-card">
+                <div class="welcome-text-content">
+                  <div class="play-indicator-badge">
+                    <i data-lucide="play-circle"></i>
+                    <span>Antes de Empezar</span>
+                  </div>
+                  <h1 class="display-title">¿Qué debes hacer primero?</h1>
+                  <p class="welcome-paragraph">
+                    Bienvenido a aiLearning. Descubre cómo funciona la plataforma de aprendizaje y qué esperar en cada uno de los niveles de entrenamiento.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Tarjeta de Nivel Actual / Progreso Principal -->
+              <div class="current-level-card">
+                <div class="card-glow-overlay"></div>
+                <div class="card-badge">NIVEL ACTUAL</div>
+                
+                <div class="level-content-wrapper">
+                  <div class="thumbnail-wrapper">
+                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop" alt="Curso" class="thumb">
+                  </div>
+                  
+                  <div class="level-info-body">
+                    <h3>Introducción a la Inteligencia Artificial</h3>
+                    <p>Este sistema transforma el caos de la IA en flujos de diseño predecibles y de alto nivel. Aprenderás...</p>
+                    
+                    <div class="level-metrics">
+                      <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="dashboard-progress-fill" style="width: 0%;"></div>
+                      </div>
+                      <div class="meta-pills">
+                        <span class="meta-pill"><i data-lucide="flag"></i> <span id="dashboard-progress-text">0%</span></span>
+                        <span class="meta-pill"><i data-lucide="award"></i> <span id="dashboard-level-text">Nivel 1</span></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-action">
+                    <button class="btn btn-coral glossy-btn" id="dashboard-start-learning-btn">
+                      <span>Comenzar</span>
+                      <i data-lucide="chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sección de Tutoriales Destacados -->
+              <div class="tutorials-section">
+                <div class="section-title-bar">
+                  <h3>Tutoriales Exclusivos</h3>
+                  <a href="#/courses" class="view-all-link">Ver todo</a>
+                </div>
+                <div class="tutorials-grid" id="dashboard-courses-grid">
+                  <!-- Cursos cargados dinámicamente -->
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Columna Derecha: Video Principal e Items Relacionados (Motion Gallery) -->
+            <div class="dash-right-col">
+              
+              <!-- Tarjeta del Video de Introducción -->
+              <div class="video-preview-card">
+                <div class="video-container">
+                  <video id="intro-video-player" src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" controls poster="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop"></video>
+                </div>
+                <div class="video-info">
+                  <h4>Bienvenida a la Academia aiLearning</h4>
+                  <div class="video-tags">
+                    <span class="tag"><i data-lucide="gauge"></i> 1.2x</span>
+                    <span class="tag"><i data-lucide="clock"></i> 5 min</span>
+                    <span class="tag"><i data-lucide="zap"></i> Rápido</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Galería de Recursos / Prompts Destacados (Estilo Motion Gallery) -->
+              <div class="motion-gallery-card">
+                <h3>Biblioteca de Prompts Destacados</h3>
+                
+                <div class="gallery-list" id="dashboard-prompts-list">
+                  <!-- Prompts cargados dinámicamente -->
+                </div>
+                
+                <a href="#/prompts" class="btn btn-ghost btn-full mt-16 text-center">Ver todos los prompts</a>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ==========================================
+             🎓 VISTA 2: LISTADO DE CURSOS
+             ========================================== -->
+        <div id="view-courses-section" class="view-section hidden">
+          <div class="courses-banner">
+            <h1 class="display-title">Programas de Formación en IA</h1>
+            <p>Sigue nuestras rutas guiadas y desbloquea niveles a medida que acumulas puntos de experiencia (XP).</p>
+          </div>
+          <div class="courses-grid" id="courses-list-grid">
+            <!-- Cursos inyectados dinámicamente -->
+          </div>
+        </div>
+
+        <!-- ==========================================
+             📖 VISTA 3: REPRODUCTOR DE CURSO Y LECCIONES
+             ========================================== -->
+        <div id="view-course-detail-section" class="view-section hidden">
+          <div class="course-detail-layout">
+            
+            <!-- Columna Izquierda: Temario del Curso (Sidebar de Lecciones) -->
+            <div class="course-lessons-sidebar">
+              <button class="back-btn" id="course-back-btn">
+                <i data-lucide="arrow-left"></i>
+                <span>Volver a Cursos</span>
+              </button>
+              
+              <div class="course-meta-header">
+                <span class="category-tag" id="course-detail-category">Diseño</span>
+                <h2 id="course-detail-title">Nombre del Curso</h2>
+                <p id="course-detail-description">Descripción detallada del curso...</p>
+              </div>
+
+              <div class="lessons-list-container">
+                <h4>Contenido del Curso</h4>
+                <div class="lessons-list" id="course-lessons-list">
+                  <!-- Lista de lecciones dinámicas -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Reproductor de Video y Detalles de la Lección Activa -->
+            <div class="course-video-canvas">
+              <div class="main-video-player-container">
+                <video id="course-video-player" src="" controls class="main-video-player"></video>
+              </div>
+              
+              <div class="lesson-meta-body">
+                <div class="lesson-header-row">
+                  <div>
+                    <span class="lesson-badge-pill" id="lesson-detail-order">Lección 1</span>
+                    <h3 id="lesson-detail-title">Cargando Lección...</h3>
+                  </div>
+                  
+                  <!-- Botón para completar -->
+                  <button class="btn btn-coral" id="complete-lesson-btn">
+                    <i data-lucide="check-circle-2"></i>
+                    <span>Marcar como Completada (+50 XP)</span>
+                  </button>
+                </div>
+
+                <div class="lesson-tabs">
+                  <button class="tab-btn active" id="lesson-tab-desc">Detalles</button>
+                </div>
+                
+                <div class="lesson-tab-content">
+                  <p id="lesson-detail-description">Descripción de la lección activa cargándose...</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ==========================================
+             🤖 VISTA 4: BIBLIOTECA DE PROMPTS
+             ========================================== -->
+        <div id="view-prompts-section" class="view-section hidden">
+          <div class="prompts-header-row">
+            <div>
+              <h1 class="display-title">Biblioteca de Prompts de IA</h1>
+              <p>Copias inteligentes listas para pegar y utilizar con ChatGPT, Claude o Gemini.</p>
+            </div>
+            
+            <button class="btn btn-blue hidden" id="admin-add-prompt-btn">
+              <i data-lucide="plus-circle"></i>
+              <span>Crear Nuevo Prompt</span>
+            </button>
+          </div>
+
+          <!-- Filtros de Búsqueda -->
+          <div class="filters-bar">
+            <div class="search-input-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="prompts-search" placeholder="Buscar por título, categoría o contenido...">
+            </div>
+            <div class="filter-categories" id="prompts-category-filters">
+              <button class="filter-btn active" data-category="all">Todos</button>
+              <button class="filter-btn" data-category="Marketing">Marketing</button>
+              <button class="filter-btn" data-category="Desarrollo">Programación</button>
+              <button class="filter-btn" data-category="Diseño">Diseño Web</button>
+            </div>
+          </div>
+
+          <!-- Grid de Prompts -->
+          <div class="prompts-grid" id="prompts-cards-grid">
+            <!-- Tarjetas de Prompts cargadas dinámicamente -->
+          </div>
+        </div>
+
+        <!-- ==========================================
+             📅 VISTA 5: CLASES EN VIVO
+             ========================================== -->
+        <div id="view-calendar-section" class="view-section hidden">
+          <div class="calendar-view-header">
+            <h1 class="display-title">Calendario de Clases en Vivo</h1>
+            <p>Accede a las sesiones programadas semanales, masterclasses y mentorías grupales personalizadas.</p>
+          </div>
+
+          <div class="sessions-list-canvas" id="calendar-sessions-list">
+            <!-- Sesiones de calendario grandes -->
+          </div>
+        </div>
+
+        <!-- ==========================================
+             🛠️ VISTA 6: PANEL DE ADMINISTRADOR
+             ========================================== -->
+        <div id="view-admin-section" class="view-section hidden">
+          <div class="admin-dashboard-header">
+            <h1 class="display-title">Panel de Administración</h1>
+            <p>Gestiona los cursos, lecciones, prompts e hilos en vivo de la plataforma.</p>
+          </div>
+
+          <div class="admin-grid">
+            
+            <!-- Bloque 1: Crear Curso -->
+            <div class="admin-form-card">
+              <h3><i data-lucide="book-open"></i> Publicar Nuevo Curso</h3>
+              <form id="admin-course-form" class="admin-form mt-16">
+                <div class="input-group">
+                  <label for="admin-c-title">Título del Curso</label>
+                  <input type="text" id="admin-c-title" placeholder="Ej. Ingeniería de Prompts Avanzada" required>
+                </div>
+                <div class="input-group">
+                  <label for="admin-c-desc">Descripción</label>
+                  <textarea id="admin-c-desc" placeholder="Resumen descriptivo del curso..." required></textarea>
+                </div>
+                <div class="input-group">
+                  <label for="admin-c-thumb">URL de la Miniatura (Thumbnail)</label>
+                  <input type="url" id="admin-c-thumb" placeholder="https://images.unsplash.com/..." required>
+                </div>
+                <div class="grid-2-inputs">
+                  <div class="input-group">
+                    <label for="admin-c-cat">Categoría</label>
+                    <input type="text" id="admin-c-cat" placeholder="Ej. Inteligencia Artificial" required>
+                  </div>
+                  <div class="input-group">
+                    <label for="admin-c-level">Nivel Mínimo Requerido</label>
+                    <input type="number" id="admin-c-level" value="1" min="1" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-blue btn-full mt-8">Crear Curso</button>
+              </form>
+            </div>
+
+            <!-- Bloque 2: Crear Lección -->
+            <div class="admin-form-card">
+              <h3><i data-lucide="video"></i> Añadir Lección a Curso</h3>
+              <form id="admin-lesson-form" class="admin-form mt-16">
+                <div class="input-group">
+                  <label for="admin-l-course">Seleccionar Curso</label>
+                  <select id="admin-l-course" required>
+                    <!-- Cargado dinámicamente -->
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="admin-l-title">Título de la Lección</label>
+                  <input type="text" id="admin-l-title" placeholder="Ej. 1.1 Introducción práctica" required>
+                </div>
+                <div class="input-group">
+                  <label for="admin-l-desc">Descripción de la Lección</label>
+                  <textarea id="admin-l-desc" placeholder="Qué aprenderá el estudiante..."></textarea>
+                </div>
+                <div class="input-group">
+                  <label for="admin-l-url">URL del Streaming de Video</label>
+                  <input type="url" id="admin-l-url" placeholder="https://..." required>
+                </div>
+                <div class="grid-2-inputs">
+                  <div class="input-group">
+                    <label for="admin-l-duration">Duración</label>
+                    <input type="text" id="admin-l-duration" placeholder="Ej. 12:45" required>
+                  </div>
+                  <div class="input-group">
+                    <label for="admin-l-order">Orden de Lección (Index)</label>
+                    <input type="number" id="admin-l-order" value="1" min="1" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-blue btn-full mt-8">Añadir Lección</button>
+              </form>
+            </div>
+
+            <!-- Bloque 3: Crear Prompt -->
+            <div class="admin-form-card">
+              <h3><i data-lucide="terminal"></i> Publicar Prompt a Galería</h3>
+              <form id="admin-prompt-form" class="admin-form mt-16">
+                <div class="input-group">
+                  <label for="admin-p-title">Título del Prompt</label>
+                  <input type="text" id="admin-p-title" placeholder="Ej. Experto en Copywriting Emocional" required>
+                </div>
+                <div class="input-group">
+                  <label for="admin-p-cat">Categoría</label>
+                  <select id="admin-p-cat" required>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Desarrollo">Programación</option>
+                    <option value="Diseño">Diseño Web</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="admin-p-content">Cuerpo del Prompt (Texto)</label>
+                  <textarea id="admin-p-content" class="prompt-textarea" placeholder="Escribe las instrucciones detalladas del prompt..." required></textarea>
+                </div>
+                <div class="input-checkbox-row">
+                  <input type="checkbox" id="admin-p-premium">
+                  <label for="admin-p-premium">¿Es un Prompt Premium exclusivo?</label>
+                </div>
+                <button type="submit" class="btn btn-blue btn-full mt-8">Publicar Prompt</button>
+              </form>
+            </div>
+
+            <!-- Bloque 4: Programar Clase en Vivo -->
+            <div class="admin-form-card">
+              <h3><i data-lucide="calendar"></i> Programar Clase en Vivo</h3>
+              <form id="admin-session-form" class="admin-form mt-16">
+                <div class="input-group">
+                  <label for="admin-s-title">Título del Evento</label>
+                  <input type="text" id="admin-s-title" placeholder="Ej. Mentoría Grupal Semanal" required>
+                </div>
+                <div class="input-group">
+                  <label for="admin-s-desc">Descripción</label>
+                  <textarea id="admin-s-desc" placeholder="Detalla los temas que se tratarán en la reunión..."></textarea>
+                </div>
+                <div class="input-group">
+                  <label for="admin-s-link">Enlace de Videollamada (Zoom/Meet)</label>
+                  <input type="url" id="admin-s-link" placeholder="https://meet.google.com/..." required>
+                </div>
+                <div class="grid-2-inputs">
+                  <div class="input-group">
+                    <label for="admin-s-date">Fecha y Hora</label>
+                    <input type="datetime-local" id="admin-s-date" required>
+                  </div>
+                  <div class="input-group">
+                    <label for="admin-s-duration">Duración estimada</label>
+                    <input type="text" id="admin-s-duration" placeholder="Ej. 1.5 horas" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-blue btn-full mt-8">Agendar Sesión en Vivo</button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Carga de la aplicación interactiva -->
+  <script src="app.js"></script>
+</body>
+</html>
