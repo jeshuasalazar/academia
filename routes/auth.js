@@ -94,6 +94,10 @@ router.post('/login', loginSchema, async (req, res) => {
     const user = result.rows[0];
 
     // Verificar contraseña
+    if (!user.password_hash || user.password_hash === 'CLERK_EXTERNAL_USER') {
+      return res.status(400).json({ error: 'Este usuario se registró mediante un proveedor externo o no tiene una contraseña local configurada.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ error: 'Correo o contraseña incorrectos.' });
