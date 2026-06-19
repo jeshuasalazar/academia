@@ -1,7 +1,10 @@
-const { query, isPostgres } = require('./index');
+const { query, isPostgres, initDb } = require('./index');
 
 async function runMigrations() {
   console.log('⚡ Iniciando migraciones de la base de datos...');
+  
+  // A. Inicializar tablas base si no existen
+  await initDb();
 
   // 1. Crear tabla de registro de migraciones si no existe
   if (isPostgres) {

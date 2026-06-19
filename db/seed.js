@@ -494,27 +494,28 @@ async function seed() {
 
   // Reservar lugar en Sesión 2 para Mariana
   await query(
-    'INSERT INTO session_bookings (user_id, session_id, attended) VALUES ($1, $2, 0)',
-    [studentId, s2Id]
+    'INSERT INTO session_bookings (user_id, session_id, attended) VALUES ($1, $2, $3)',
+    [studentId, s2Id, isPostgres ? false : 0]
   );
 
   // 13. Prompts predefinidos
   console.log('🤖 Insertando biblioteca de prompts...');
   await query(
     `INSERT INTO prompts (title, category, content, is_premium) 
-     VALUES ($1, $2, $3, 0)`,
+     VALUES ($1, $2, $3, $4)`,
     [
       'Redactor de Hilos de Twitter Virales',
       'Marketing',
       `Actúa como un estratega de contenido viral de Twitter. Escribe un hilo altamente enganchador de 5 tweets sobre [TEMA]. 
 Utiliza la técnica de "gancho magnético" en el primer tweet, un tono dinámico y profesional, y emojis estratégicos. 
-Finaliza con un llamado a la acción sutil y una pregunta interactiva.`
+Finaliza con un llamado a la acción sutil y una pregunta interactiva.`,
+      isPostgres ? false : 0
     ]
   );
 
   await query(
     `INSERT INTO prompts (title, category, content, is_premium) 
-     VALUES ($1, $2, $3, 0)`,
+     VALUES ($1, $2, $3, $4)`,
     [
       'Refactorizador de Código Limpio y Patrones de Diseño',
       'Desarrollo',
@@ -523,19 +524,21 @@ Finaliza con un llamado a la acción sutil y una pregunta interactiva.`
 [CÓDIGO]
 
 Refactorízalo aplicando principios SOLID, patrones de diseño limpios y optimizando la complejidad algorítmica. 
-Explica detalladamente cada mejora realizada paso a paso en formato Markdown.`
+Explica detalladamente cada mejora realizada paso a paso en formato Markdown.`,
+      isPostgres ? false : 0
     ]
   );
 
   await query(
     `INSERT INTO prompts (title, category, content, is_premium) 
-     VALUES ($1, $2, $3, 1)`,
+     VALUES ($1, $2, $3, $4)`,
     [
       'Generador de Componentes CSS Glassmorphic de Lujo',
       'Diseño',
       `Genera código HTML5 semántico y CSS3 puro para un componente de tarjeta interactiva con efecto de Glassmorphism de ultra alta fidelidad. 
 Debe utilizar un gradiente sutil de refracción en los bordes, desenfoque de fondo profundo (backdrop-filter: blur(16px)), 
-sombras suaves multidimensionales, y transiciones dinámicas al hacer hover.`
+sombras suaves multidimensionales, y transiciones dinámicas al hacer hover.`,
+      isPostgres ? true : 1
     ]
   );
 
