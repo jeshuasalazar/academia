@@ -7,6 +7,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const db = require('./db/index');
 const scheduler = require('./services/scheduler');
+const migrations = require('./db/migrations');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +15,11 @@ const PORT = process.env.PORT || 3000;
 // 1. Inicializar la base de datos
 db.initDb()
   .then(() => {
-    // Inicializar Scheduler de tareas en segundo plano tras cargar base de datos
+    // Ejecutar migraciones automáticas al iniciar
+    return migrations.runMigrations();
+  })
+  .then(() => {
+    // Inicializar Scheduler de tareas en segundo plano tras cargar base de datos e iniciar migraciones
     scheduler.initScheduler();
   })
   .catch(err => {
