@@ -27,12 +27,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://js.clerk.com", "https://*.clerk.accounts.dev", "https://*.clerk.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://js.clerk.com", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://images.pxhere.com", "https://*.stripe.com", "https://images.clerk.com", "https://*.clerk.com"],
       frameSrc: ["'self'", "https://www.youtube.com", "https://player.vimeo.com", "https://*.zoom.us", "https://*.clerk.accounts.dev", "https://*.clerk.com"],
-      connectSrc: ["'self'", "https://api.stripe.com", "https://api.zoom.us", "https://*.clerk.accounts.dev", "https://*.clerk.com"]
+      connectSrc: ["'self'", "https://api.stripe.com", "https://api.zoom.us", "https://*.clerk.accounts.dev", "https://*.clerk.com"],
+      mediaSrc: ["'self'", "https://commondatastorage.googleapis.com", "https://*.googleapis.com", "blob:", "data:"]
     }
   }
 }));
