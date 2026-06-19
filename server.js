@@ -7,6 +7,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const db = require('./db/index');
 const scheduler = require('./services/scheduler');
+const { clerkMiddleware } = require('@clerk/express');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,17 +27,18 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://js.clerk.com", "https://*.clerk.accounts.dev", "https://*.clerk.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://images.pxhere.com", "https://*.stripe.com"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://player.vimeo.com", "https://*.zoom.us"],
-      connectSrc: ["'self'", "https://api.stripe.com", "https://api.zoom.us"]
+      imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://images.pxhere.com", "https://*.stripe.com", "https://images.clerk.com", "https://*.clerk.com"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://player.vimeo.com", "https://*.zoom.us", "https://*.clerk.accounts.dev", "https://*.clerk.com"],
+      connectSrc: ["'self'", "https://api.stripe.com", "https://api.zoom.us", "https://*.clerk.accounts.dev", "https://*.clerk.com"]
     }
   }
 }));
 app.use(cors());
 app.use(compression());
+app.use(clerkMiddleware());
 
 // 3. Limitadores de Tasa (Rate Limiting)
 const generalLimiter = rateLimit({
@@ -63,6 +65,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // 5. Servir archivos estáticos del frontend
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Configuración pública de Clerk para el cliente
+app.get('/api/config', (req, res) => {
+  res.json({
+    clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY
+  });
+});
 
 // 6. Registro de enrutadores modulares (Routers)
 app.use('/api/auth', authLimiter, require('./routes/auth'));

@@ -634,6 +634,30 @@ async function runMigrations() {
     await markMigrationApplied('v2_performance_indexes');
   }
 
+  // --- MIGRACIÓN 4: Integración con Clerk Auth ---
+  if (!(await isMigrationApplied('v3_clerk_auth_integration'))) {
+    console.log('⚡ Aplicando migración para Clerk Auth...');
+    
+    // 1. Añadir columna clerk_id a users
+    await addColumn('users', 'clerk_id', 'VARCHAR(255)', 'TEXT');
+    
+    // 2. Crear índice único para clerk_id
+    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users (clerk_id)');
+    console.log('🔑 Índice único creado para clerk_id.');
+    
+    // 3. Hacer password_hash NULLABLE en PostgreSQL
+    if (isPostgres) {
+      try {
+        await query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
+        console.log('🔓 password_hash cambiado a NULLABLE en PostgreSQL.');
+      } catch (e) {
+        console.log('⚠️ No se pudo alterar password_hash (quizás ya es nullable):', e.message);
+      }
+    }
+    
+    await markMigrationApplied('v3_clerk_auth_integration');
+  }
+
   console.log('🎉 ¡Todas las migraciones se han ejecutado con éxito!');
 }
 
