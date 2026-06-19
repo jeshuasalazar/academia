@@ -7,7 +7,6 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const db = require('./db/index');
 const scheduler = require('./services/scheduler');
-const { clerkMiddleware } = require('@clerk/express');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,7 +38,6 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(compression());
-app.use(clerkMiddleware());
 
 // 3. Limitadores de Tasa (Rate Limiting)
 const generalLimiter = rateLimit({
@@ -66,13 +64,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // 5. Servir archivos estáticos del frontend
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Configuración pública de Clerk para el cliente
-app.get('/api/config', (req, res) => {
-  res.json({
-    clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY
-  });
-});
 
 // 6. Registro de enrutadores modulares (Routers)
 app.use('/api/auth', authLimiter, require('./routes/auth'));

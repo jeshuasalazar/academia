@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
-async function initApp() {
+function initApp() {
   // Lucide Icons Render
   lucide.createIcons();
 
@@ -34,73 +34,14 @@ async function initApp() {
   // Configurar Tema (Claro / Oscuro)
   setupTheme();
 
+  // Escuchadores de eventos para Formularios de Acceso
+  setupAuthEvents();
+
   // Escuchadores de navegación general
   setupGeneralEvents();
 
-  // Cargar configuración de Clerk desde el servidor y cargar ClerkJS
-  try {
-    const configRes = await fetch('/api/config');
-    const config = await configRes.json();
-    
-    if (config.clerkPublishableKey) {
-      await loadClerkScript(config.clerkPublishableKey);
-    } else {
-      console.error('Clerk Publishable Key no configurada en el servidor.');
-      showToast('Error: Autenticación no disponible.');
-    }
-  } catch (err) {
-    console.error('Error al inicializar Clerk:', err);
-    showToast('Error de conexión al cargar autenticación.');
-  }
-}
-
-function loadClerkScript(publishableKey) {
-  return new Promise((resolve) => {
-    const script = document.createElement('script');
-    script.src = 'https://js.clerk.com/v4';
-    script.async = true;
-    script.setAttribute('data-clerk-publishable-key', publishableKey);
-    script.crossOrigin = 'anonymous';
-    script.onload = async () => {
-      await window.Clerk.load();
-      
-      // Configurar el interceptor de fetch para inyectar JWTs de Clerk
-      setupFetchInterceptor();
-      
-      // Escuchadores de eventos para Logout y Perfil
-      setupAuthEvents();
-      
-      // Comprobar sesión activa inicial
-      await checkAuth();
-      resolve();
-    };
-    script.onerror = () => {
-      console.error('Error al cargar el script de ClerkJS');
-      resolve();
-    };
-    document.head.appendChild(script);
-  });
-}
-
-function setupFetchInterceptor() {
-  const originalFetch = window.fetch;
-  window.fetch = async function (url, options = {}) {
-    const urlStr = url.toString();
-    if (urlStr.includes('/api/') && !urlStr.includes('/api/config') && window.Clerk && window.Clerk.session) {
-      try {
-        const token = await window.Clerk.session.getToken();
-        options.headers = options.headers || {};
-        if (options.headers instanceof Headers) {
-          options.headers.set('Authorization', `Bearer ${token}`);
-        } else {
-          options.headers['Authorization'] = `Bearer ${token}`;
-        }
-      } catch (err) {
-        console.error('Error al inyectar token de Clerk:', err);
-      }
-    }
-    return originalFetch(url, options);
-  };
+  // Comprobar sesión activa inicial
+  checkAuth();
 }
 
 /* ==========================================
@@ -138,32 +79,106 @@ function setupTheme() {
    🚪 GESTIÓN DE ACCESO Y AUTENTICACIÓN (API)
    ========================================== */
 function setupAuthEvents() {
-  // Botón Logout
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      if (window.Clerk) {
-        state.token = null;
-        state.user = null;
-        await window.Clerk.signOut();
-        showToast('Sesión cerrada.');
-        checkAuth();
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const goToRegister = document.getElementById('go-to-register');
+  const goToLogin = document.getElementById('go-to-login');
+
+  // Alternar Formularios
+  if (goToRegister) {
+    goToRegister.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginForm.classList.add('hidden');
+      registerForm.classList.remove('hidden');
+      document.getElementById('auth-subtitle').innerText = 'Crea tu cuenta de aprendizaje';
+    });
+  }
+
+  if (goToLogin) {
+    goToLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      registerForm.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+      document.getElementById('auth-subtitle').innerText = 'Inicia sesión para continuar aprendiendo';
+    });
+  }
+
+  // Submit Login
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem('ailearning_token', data.token);
+          localStorage.setItem('ailearning_user', JSON.stringify(data.user));
+          state.token = data.token;
+          state.user = data.user;
+          
+          showToast('¡Ingreso exitoso! Bienvenido.');
+          checkAuth();
+        } else {
+          showToast(data.error || 'Correo o contraseña incorrectos.');
+        }
+      } catch (err) {
+        console.error('Error en login:', err);
+        showToast('Error de conexión con el servidor.');
       }
     });
   }
 
-  // Clic en Perfil de la Barra Lateral para abrir Clerk User Profile Modal
-  const sidebarProfile = document.getElementById('sidebar-profile');
-  if (sidebarProfile) {
-    sidebarProfile.style.cursor = 'pointer';
-    sidebarProfile.addEventListener('click', () => {
-      if (window.Clerk && window.Clerk.user) {
-        window.Clerk.openUserProfile({
-          appearance: {
-            theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
-          }
+  // Submit Registro
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('register-name').value;
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
         });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('Registro exitoso. ¡Inicia sesión!');
+          registerForm.classList.add('hidden');
+          loginForm.classList.remove('hidden');
+          document.getElementById('auth-subtitle').innerText = 'Inicia sesión para continuar aprendiendo';
+        } else {
+          showToast(data.error || 'Error al crear la cuenta.');
+        }
+      } catch (err) {
+        console.error('Error en registro:', err);
+        showToast('Error de conexión con el servidor.');
       }
+    });
+  }
+
+  // Botón Logout
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('ailearning_token');
+      localStorage.removeItem('ailearning_user');
+      state.token = null;
+      state.user = null;
+      checkAuth();
+      showToast('Sesión cerrada.');
     });
   }
 }
@@ -181,53 +196,25 @@ async function checkAuth() {
     return;
   }
 
-  if (window.Clerk && window.Clerk.user) {
+  if (state.token && state.user) {
     authContainer.classList.add('hidden');
     appContainer.classList.remove('hidden');
     
-    try {
-      const meRes = await fetch('/api/auth/me');
-      if (meRes.ok) {
-        const dbUser = await meRes.json();
-        state.token = 'CLERK_ACTIVE_SESSION';
-        state.user = dbUser;
-        
-        // Configurar perfiles sidebar
-        updateUserProfileDisplay();
-        
-        // Cargar datos asíncronos obligatorios de la sesión
-        await fetchUserStats();
-        await fetchSessions();
-        await fetchNotifications();
-        setupNotificationDropdown();
-        
-        // Ejecutar router para ir al hash activo o por defecto
-        router();
-      } else {
-        console.error('Error al obtener perfil local:', meRes.statusText);
-        showToast('Error al sincronizar tu perfil de usuario.');
-        await window.Clerk.signOut();
-      }
-    } catch (err) {
-      console.error('Error al verificar sesión local:', err);
-      showToast('Error de conexión con el servidor.');
-    }
+    // Configurar perfiles sidebar
+    updateUserProfileDisplay();
+    
+    // Cargar datos asíncronos obligatorios de la sesión
+    await fetchUserStats();
+    await fetchSessions();
+    await fetchNotifications();
+    setupNotificationDropdown();
+    
+    // Ejecutar router para ir al hash activo o por defecto
+    router();
   } else {
     appContainer.classList.add('hidden');
     authContainer.classList.remove('hidden');
     window.location.hash = ''; // Limpiar hash
-    
-    if (window.Clerk) {
-      const signInDiv = document.getElementById('clerk-sign-in');
-      if (signInDiv) {
-        signInDiv.innerHTML = ''; // Limpiar contenedor
-        window.Clerk.mountSignIn(signInDiv, {
-          appearance: {
-            theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
-          }
-        });
-      }
-    }
   }
   lucide.createIcons();
 }
