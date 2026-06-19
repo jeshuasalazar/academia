@@ -119,6 +119,22 @@
           <i data-lucide="calendar"></i>
           <span>Clases en Vivo</span>
         </a>
+        <a href="#/community" class="nav-item" id="nav-community">
+          <i data-lucide="message-square"></i>
+          <span>Comunidad</span>
+        </a>
+        <a href="#/membership" class="nav-item" id="nav-membership">
+          <i data-lucide="credit-card"></i>
+          <span>Membresía</span>
+        </a>
+        <a href="#/achievements" class="nav-item" id="nav-achievements">
+          <i data-lucide="award"></i>
+          <span>Logros</span>
+        </a>
+        <a href="#/profile" class="nav-item" id="nav-profile">
+          <i data-lucide="user"></i>
+          <span>Mi Perfil</span>
+        </a>
         <a href="#/admin" class="nav-item hidden" id="nav-admin">
           <i data-lucide="shield-check"></i>
           <span>Administrador</span>
@@ -177,6 +193,23 @@
           <h2 id="view-title" class="view-title">Dashboard</h2>
         </div>
         <div class="header-right">
+          <!-- Centro de Notificaciones -->
+          <div class="notification-center">
+            <button class="notification-bell-btn" id="notification-bell-btn" title="Notificaciones">
+              <i data-lucide="bell"></i>
+              <span class="notification-badge hidden" id="notification-count">0</span>
+            </button>
+            <div class="notification-dropdown hidden" id="notification-dropdown">
+              <div class="dropdown-header">
+                <h4>Notificaciones</h4>
+                <button id="mark-all-read-btn">Marcar todo leído</button>
+              </div>
+              <div class="dropdown-list" id="notification-list">
+                <!-- Se inyectan dinámicamente -->
+              </div>
+            </div>
+          </div>
+
           <div class="user-quick-profile">
             <span class="user-xp" id="header-user-xp">XP: 0</span>
             <div class="quick-avatar" id="header-avatar" style="background: var(--coral);">M</div>
@@ -552,10 +585,419 @@
           </div>
         </div>
 
+        <!-- ==========================================
+             🏆 VISTA 7: LOGROS Y PROGRESO (ACHIEVEMENTS)
+             ========================================== -->
+        <div id="view-achievements-section" class="view-section hidden">
+          <div class="achievements-dashboard-header">
+            <h1 class="display-title">Tus Logros y Gamificación</h1>
+            <p>Monitorea tu nivel, XP acumulada, racha diaria y las insignias desbloqueadas.</p>
+          </div>
+
+          <div class="achievements-layout">
+            <!-- Columna izquierda: Racha (Streak) y Progreso General -->
+            <div class="achievements-left-col">
+              <!-- Tarjeta de Racha y Calendario (Contribution Graph) -->
+              <div class="streak-card">
+                <div class="streak-header">
+                  <div class="streak-badge">
+                    <span id="streak-fire-emoji">🔥</span>
+                    <span id="streak-count-text">0 días</span>
+                  </div>
+                  <h3>Tu Racha Activa</h3>
+                </div>
+                <p>Mantén tu racha ingresando todos los días para realizar lecciones y quizzes.</p>
+                
+                <!-- Streak Contribution/Activity Grid -->
+                <div class="activity-graph-container">
+                  <h4>Actividad de Aprendizaje (Últimos 14 días)</h4>
+                  <div class="activity-grid" id="streak-activity-grid">
+                    <!-- Días de actividad inyectados por js -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tarjeta de Resumen XP -->
+              <div class="xp-progress-card">
+                <div class="xp-progress-info">
+                  <div>
+                    <span class="lbl-small">Nivel</span>
+                    <h2 id="achievements-level-num">1</h2>
+                  </div>
+                  <div class="text-right">
+                    <span class="lbl-small">Total XP</span>
+                    <h2 id="achievements-xp-total">0</h2>
+                  </div>
+                </div>
+                <div class="xp-bar-wrapper">
+                  <div class="xp-bar-fill" id="achievements-xp-fill" style="width: 0%;"></div>
+                </div>
+                <p class="xp-helper" id="achievements-xp-helper">Cargando...</p>
+              </div>
+            </div>
+
+            <!-- Columna derecha: Catálogo de Insignias (Achievements List) -->
+            <div class="achievements-right-col">
+              <div class="badges-gallery-card">
+                <h3>Insignias Disponibles</h3>
+                <div class="badges-grid" id="achievements-badges-grid">
+                  <!-- Se inyectan dinámicamente -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             💬 VISTA 8: COMUNIDAD (COMMUNITY FEED)
+             ========================================== -->
+        <div id="view-community-section" class="view-section hidden">
+          <div class="community-header">
+            <h1 class="display-title">Comunidad aiLearning</h1>
+            <p>Comparte tus logros, resuelve dudas con otros estudiantes y participa en la conversación.</p>
+          </div>
+
+          <div class="community-layout">
+            <!-- Feed de Publicaciones -->
+            <div class="community-feed-col">
+              <!-- Creador de Posts -->
+              <div class="post-composer-card">
+                <form id="community-post-form">
+                  <div class="input-group">
+                    <input type="text" id="post-title" placeholder="Título de tu publicación..." required>
+                  </div>
+                  <div class="input-group">
+                    <textarea id="post-body" placeholder="¿Qué quieres compartir hoy con la comunidad?" required></textarea>
+                  </div>
+                  <div class="composer-actions">
+                    <div class="input-group">
+                      <select id="post-category" required>
+                        <option value="General">General</option>
+                        <option value="Dudas">Dudas</option>
+                        <option value="Logros">Logros</option>
+                        <option value="Anuncios">Anuncios</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-blue">
+                      <i data-lucide="send"></i>
+                      <span>Publicar</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Lista de Publicaciones -->
+              <div class="posts-feed-container" id="community-posts-feed">
+                <!-- Posts cargados dinámicamente -->
+              </div>
+            </div>
+
+            <!-- Panel Lateral de Comunidad (Sidebar) -->
+            <div class="community-sidebar-col">
+              <div class="community-rules-card">
+                <h3>Normas de la Comunidad</h3>
+                <ul>
+                  <li><i data-lucide="check-circle"></i> Sé respetuoso y constructivo.</li>
+                  <li><i data-lucide="check-circle"></i> Comparte tus logros y celebra los de otros.</li>
+                  <li><i data-lucide="check-circle"></i> Utiliza las categorías para mantener orden.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             💳 VISTA 9: MEMBRESÍA Y STRIPE (BILLING)
+             ========================================== -->
+        <div id="view-membership-section" class="view-section hidden">
+          <div class="membership-header">
+            <h1 class="display-title">Planes de Membresía</h1>
+            <p>Accede a contenido exclusivo, mentorías semanales y herramientas avanzadas de IA.</p>
+          </div>
+
+          <div class="membership-layout">
+            <!-- Estado actual de la suscripción -->
+            <div class="subscription-status-card" id="subscription-status-card">
+              <div class="status-badge" id="billing-current-badge">Plan Gratuito</div>
+              <div class="status-details">
+                <h3 id="billing-status-title">No tienes una membresía activa</h3>
+                <p id="billing-status-desc">Mejora tu plan para desbloquear lecciones premium, quizzes, calendarización de mentorías y generación de certificados.</p>
+              </div>
+              <div class="status-actions" id="billing-status-actions">
+                <!-- Botón dinámico (Gestionar suscripción / Mock / Checkout) -->
+              </div>
+            </div>
+
+            <!-- Selector de Planes -->
+            <div class="pricing-plans-grid" id="pricing-plans-grid">
+              <!-- Plan Mensual -->
+              <div class="pricing-card">
+                <div class="pricing-header">
+                  <span class="plan-name">Mensual</span>
+                  <div class="plan-price">$19 <span class="period">/ mes</span></div>
+                </div>
+                <div class="pricing-features">
+                  <ul>
+                    <li><i data-lucide="check" class="text-blue"></i> Acceso a todos los Cursos e IA</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Clases y mentorías en vivo</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Quizzes interactivos y XP</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Certificados de graduación</li>
+                  </ul>
+                </div>
+                <button class="btn btn-blue btn-full btn-checkout" data-plan="monthly">Suscribirse Mensual</button>
+              </div>
+
+              <!-- Plan Anual -->
+              <div class="pricing-card premium-card">
+                <div class="card-glow-overlay"></div>
+                <div class="popular-badge">AHORRA 35%</div>
+                <div class="pricing-header">
+                  <span class="plan-name">Anual</span>
+                  <div class="plan-price">$149 <span class="period">/ año</span></div>
+                </div>
+                <div class="pricing-features">
+                  <ul>
+                    <li><i data-lucide="check" class="text-blue"></i> Todo lo del plan mensual</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Soporte prioritario 1-a-1</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Acceso anticipado a nuevos prompts</li>
+                    <li><i data-lucide="check" class="text-blue"></i> Descuentos en workshops físicos</li>
+                  </ul>
+                </div>
+                <button class="btn btn-coral glossy-btn btn-full btn-checkout" data-plan="annual">Suscribirse Anual</button>
+              </div>
+            </div>
+
+            <!-- Panel de Control Local (Sólo en desarrollo si faltan Stripe Keys) -->
+            <div class="mock-billing-card hidden" id="mock-billing-control">
+              <h4>🛠️ Panel de Desarrollo: Facturación Local Simulada</h4>
+              <p>Dado que las claves de Stripe no están completamente configuradas, puedes simular una suscripción activa localmente para probar todo el flujo de gating del sitio.</p>
+              <div class="mock-actions">
+                <button class="btn btn-blue" id="mock-activate-btn">Activar Premium Simulado</button>
+                <button class="btn btn-ghost" id="mock-deactivate-btn">Desactivar Premium Simulado</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             👤 VISTA 10: PERFIL Y CERTIFICADOS (PROFILE)
+             ========================================== -->
+        <div id="view-profile-section" class="view-section hidden">
+          <div class="profile-header-view">
+            <h1 class="display-title">Mi Perfil</h1>
+            <p>Configura tu información personal, zona horaria y descarga tus certificados oficiales.</p>
+          </div>
+
+          <div class="profile-layout">
+            <!-- Formulario de Configuración -->
+            <div class="profile-forms-col">
+              <div class="profile-settings-card">
+                <h3>Datos Personales</h3>
+                <form id="profile-edit-form" class="admin-form mt-16">
+                  <div class="input-group">
+                    <label for="profile-name">Nombre Completo</label>
+                    <input type="text" id="profile-name" required>
+                  </div>
+                  <div class="input-group">
+                    <label for="profile-email">Correo Electrónico (No modificable)</label>
+                    <input type="email" id="profile-email" readonly disabled>
+                  </div>
+                  <div class="input-group">
+                    <label for="profile-timezone">Zona Horaria</label>
+                    <select id="profile-timezone" required>
+                      <option value="America/Mexico_City">México (CDMX)</option>
+                      <option value="America/Bogota">Colombia (Bogotá)</option>
+                      <option value="America/Lima">Perú (Lima)</option>
+                      <option value="America/Santiago">Chile (Santiago)</option>
+                      <option value="America/Argentina/Buenos_Aires">Argentina (B. Aires)</option>
+                      <option value="Europe/Madrid">España (Madrid)</option>
+                      <option value="UTC">Coordinated Universal Time (UTC)</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-blue">Guardar Cambios</button>
+                </form>
+              </div>
+
+              <!-- Formulario de Contraseña -->
+              <div class="profile-settings-card mt-24">
+                <h3>Cambiar Contraseña</h3>
+                <form id="profile-password-form" class="admin-form mt-16">
+                  <div class="input-group">
+                    <label for="profile-old-pass">Contraseña Actual</label>
+                    <input type="password" id="profile-old-pass" required autocomplete="current-password">
+                  </div>
+                  <div class="input-group">
+                    <label for="profile-new-pass">Nueva Contraseña</label>
+                    <input type="password" id="profile-new-pass" required autocomplete="new-password">
+                  </div>
+                  <button type="submit" class="btn btn-ghost">Actualizar Contraseña</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Certificados del Alumno -->
+            <div class="profile-certs-col">
+              <div class="certificates-card">
+                <h3>Mis Certificados de Graduación</h3>
+                <p class="certs-intro">Completa todos los módulos y quizzes de un curso con promedio aprobatorio para generar tu certificado oficial verificado con código QR.</p>
+                <div class="certs-grid mt-16" id="profile-certs-grid">
+                  <!-- Certificados renderizados dinámicamente -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             📊 VISTA 11: TABLA DE LÍDERES (LEADERBOARD)
+             ========================================== -->
+        <div id="view-leaderboard-section" class="view-section hidden">
+          <div class="leaderboard-header">
+            <h1 class="display-title">Ranking de Estudiantes</h1>
+            <p>Compite de manera sana acumulando puntos de experiencia (XP) completando lecciones y quizzes.</p>
+          </div>
+
+          <div class="leaderboard-card">
+            <!-- Filtros de clasificación -->
+            <div class="leaderboard-filters">
+              <button class="filter-btn active" data-period="weekly">Semanal</button>
+              <button class="filter-btn" data-period="monthly">Mensual</button>
+              <button class="filter-btn" data-period="all">Histórico</button>
+            </div>
+
+            <!-- Tabla de posiciones -->
+            <div class="leaderboard-table-container">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Posición</th>
+                    <th>Estudiante</th>
+                    <th>Racha</th>
+                    <th>Nivel</th>
+                    <th>Total XP</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-tbody">
+                  <!-- Filas inyectadas dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mi Posición Especial Widget -->
+            <div class="my-position-banner hidden" id="leaderboard-my-position">
+              <!-- Posición del usuario actual si no está en el Top 20 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             📝 VISTA 12: REPRODUCTOR DE QUIZZES (QUIZ ENGINE)
+             ========================================== -->
+        <div id="view-quiz-section" class="view-section hidden">
+          <div class="quiz-player-layout">
+            <div class="quiz-progress-bar">
+              <div class="quiz-progress-fill" id="quiz-progress-fill" style="width: 0%;"></div>
+            </div>
+
+            <div class="quiz-header-row">
+              <div>
+                <span class="quiz-label-mini" id="quiz-course-module-name">CURSO / MÓDULO</span>
+                <h2 id="quiz-title-display">Evaluación de Módulo</h2>
+              </div>
+              <div class="quiz-timer" id="quiz-timer-widget">
+                <i data-lucide="clock"></i>
+                <span id="quiz-time-left">00:00</span>
+              </div>
+            </div>
+
+            <div class="quiz-card" id="quiz-question-card">
+              <div class="question-number" id="quiz-question-number">Pregunta 1 de 5</div>
+              <h3 class="question-text" id="quiz-question-text">Texto de la pregunta...</h3>
+              
+              <div class="quiz-options-list" id="quiz-options-list">
+                <!-- Botones de opción inyectados dinámicamente -->
+              </div>
+
+              <div class="quiz-actions-row">
+                <button class="btn btn-ghost" id="quiz-prev-btn" disabled>Anterior</button>
+                <button class="btn btn-blue" id="quiz-next-btn">Siguiente</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             📝 VISTA 13: RESULTADOS DEL QUIZ (REVIEW)
+             ========================================== -->
+        <div id="view-quiz-review-section" class="view-section hidden">
+          <div class="quiz-review-layout">
+            <div class="quiz-result-score-card">
+              <div class="score-radial-progress" id="quiz-score-badge">0%</div>
+              <h2 id="quiz-review-headline">¡Evaluación Completada!</h2>
+              <p id="quiz-review-summary">Has obtenido 0 de 0 puntos requeridos para aprobar.</p>
+              
+              <div class="quiz-rewards-box hidden" id="quiz-rewards-box">
+                <span class="reward-title">✨ ¡Felicidades! +100 XP ganados ✨</span>
+              </div>
+
+              <div class="quiz-review-actions">
+                <button class="btn btn-blue" id="quiz-review-back-course">Volver al Curso</button>
+                <button class="btn btn-ghost" id="quiz-review-retry-btn">Reintentar Quiz</button>
+              </div>
+            </div>
+
+            <div class="quiz-questions-feedback-card">
+              <h3>Revisión de Preguntas</h3>
+              <div class="feedback-questions-list" id="quiz-feedback-list">
+                <!-- Detalles de respuestas inyectados por js -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             🎓 VISTA 14: VERIFICACIÓN PÚBLICA DE CERTIFICADO
+             ========================================== -->
+        <div id="view-verify-cert-section" class="view-section hidden">
+          <div class="verify-cert-wrapper">
+            <div class="verify-cert-card">
+              <div class="verify-glow-line"></div>
+              <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <span class="logo-text">ai<span class="text-blue">Learning</span></span>
+              </div>
+              
+              <div class="verification-badge">
+                <i data-lucide="shield-check"></i>
+                <span>CERTIFICADO VERIFICADO</span>
+              </div>
+
+              <div class="verify-body">
+                <p class="verify-intro">Se confirma que el siguiente estudiante ha completado satisfactoriamente los requisitos del programa de formación:</p>
+                <h2 id="verify-student-name">Nombre del Alumno</h2>
+                <div class="verify-divider"></div>
+                <h3 id="verify-course-name">Nombre del Curso</h3>
+                <p class="verify-meta">
+                  <span>Código de Verificación: <strong id="verify-code-lbl" class="mono">XXXX-XXXX</strong></span><br>
+                  <span>Fecha de Emisión: <strong id="verify-date-lbl">DD/MM/AAAA</strong></span>
+                </p>
+              </div>
+              
+              <div class="verify-footer">
+                <p>Esta certificación es emitida de forma digital por aiLearning Academy.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
 
   </div>
+
+  <!-- CDNs para exportar Certificado a PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <!-- Carga de la aplicación interactiva -->
   <script src="app.js"></script>

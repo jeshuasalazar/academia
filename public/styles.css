@@ -1779,3 +1779,893 @@ body.light-theme .prompt-card-body {
     gap: 16px;
   }
 }
+
+/* ==========================================================================
+   🏆 VISTA 7: LOGROS Y PROGRESO (ACHIEVEMENTS)
+   ========================================================================== */
+.achievements-dashboard-header {
+  margin-bottom: 32px;
+}
+.achievements-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 32px;
+  align-items: start;
+}
+.achievements-left-col, .achievements-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.streak-card, 
+.xp-progress-card, 
+.badges-gallery-card, 
+.post-composer-card, 
+.community-rules-card, 
+.subscription-status-card, 
+.pricing-card, 
+.mock-billing-card, 
+.profile-settings-card, 
+.certificates-card, 
+.leaderboard-card, 
+.quiz-player-layout, 
+.quiz-result-score-card, 
+.quiz-questions-feedback-card, 
+.verify-cert-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color-soft);
+  border-radius: 18px;
+  padding: 30px;
+  box-shadow: var(--shadow-premium);
+  position: relative;
+}
+.streak-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 107, 71, 0.15);
+  color: var(--coral);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+.activity-graph-container {
+  margin-top: 20px;
+}
+.activity-graph-container h4 {
+  font-size: 11px;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.activity-day {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--hover-color);
+  border: 1px solid var(--border-color-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  position: relative;
+}
+.activity-day.active {
+  background: var(--coral);
+  color: #fff;
+  border-color: var(--coral);
+  box-shadow: 0 0 10px rgba(255, 107, 71, 0.4);
+}
+.xp-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+.lbl-small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+.xp-progress-info h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+}
+.xp-bar-wrapper {
+  height: 10px;
+  background: var(--hover-color);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color-soft);
+  margin-bottom: 12px;
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ai-blue) 0%, var(--ai-blue-deep) 100%);
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.xp-helper {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  border-radius: 14px;
+  background: var(--hover-color);
+  border: 1px solid var(--border-color-soft);
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+.badge-item.unlocked {
+  opacity: 1;
+  border-color: var(--ai-blue);
+  box-shadow: 0 4px 12px rgba(45, 136, 232, 0.1);
+}
+.badge-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  filter: grayscale(1);
+  transition: all 0.2s ease;
+}
+.badge-item.unlocked .badge-icon {
+  filter: grayscale(0);
+  transform: scale(1.1);
+}
+.badge-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.badge-desc {
+  font-size: 9px;
+  color: var(--text-sub);
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+/* ==========================================================================
+   💬 VISTA 8: COMUNIDAD (COMMUNITY FEED)
+   ========================================================================== */
+.community-header {
+  margin-bottom: 32px;
+}
+.community-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 32px;
+  align-items: start;
+}
+.community-feed-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.post-composer-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.post-composer-card textarea {
+  height: 80px;
+  resize: none;
+}
+.composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.posts-feed-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.post-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color-soft);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--shadow-premium);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.post-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.post-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.post-meta-details h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.post-meta-details span {
+  font-size: 10px;
+  color: var(--text-sub);
+  font-family: 'JetBrains Mono', monospace;
+}
+.post-tag {
+  background: rgba(45, 136, 232, 0.15);
+  color: var(--ai-blue);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.post-tag.dudas {
+  background: rgba(255, 107, 71, 0.15);
+  color: var(--coral);
+}
+.post-tag.logros {
+  background: rgba(107, 144, 128, 0.15);
+  color: var(--sage);
+}
+.post-tag.anuncios {
+  background: rgba(107, 116, 132, 0.15);
+  color: var(--mute);
+}
+.post-title-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+}
+.post-body-text {
+  font-size: 13.5px;
+  color: var(--text-sub);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.post-actions {
+  display: flex;
+  gap: 16px;
+  border-top: 1px solid var(--border-color-soft);
+  padding-top: 14px;
+  margin-top: 8px;
+}
+.post-action-btn {
+  background: transparent;
+  color: var(--text-sub);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.post-action-btn:hover, .post-action-btn.liked {
+  color: var(--ai-blue);
+  background: var(--hover-color);
+}
+.post-action-btn.comment-toggle:hover {
+  color: var(--coral);
+}
+.replies-section {
+  border-top: 1px solid var(--border-color-soft);
+  padding-top: 16px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reply-item {
+  background: var(--hover-color);
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reply-user-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+.reply-text {
+  color: var(--text-main);
+  line-height: 1.4;
+}
+.reply-composer {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.reply-composer input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.community-rules-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.community-rules-card li {
+  font-size: 12.5px;
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   💳 VISTA 9: MEMBRESÍA Y STRIPE (BILLING)
+   ========================================================================== */
+.membership-header {
+  margin-bottom: 32px;
+}
+.subscription-status-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  background: linear-gradient(135deg, rgba(45, 136, 232, 0.1) 0%, rgba(255, 107, 71, 0.05) 100%), var(--bg-card);
+}
+.status-badge {
+  background: var(--coral);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.status-details h3 {
+  font-size: 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+}
+.status-details p {
+  color: var(--text-sub);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.pricing-plans-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+  text-align: center;
+}
+.pricing-card.premium-card {
+  border-color: var(--coral);
+}
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(255, 107, 71, 0.3);
+}
+.plan-name {
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-sub);
+  letter-spacing: 0.05em;
+}
+.plan-price {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 8px;
+}
+.plan-price .period {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+.pricing-features ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+.pricing-features li {
+  font-size: 13.5px;
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mock-billing-card {
+  border: 1.5px dashed var(--ai-blue);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mock-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   👤 VISTA 10: PERFIL Y CERTIFICADOS (PROFILE)
+   ========================================================================== */
+.profile-header-view {
+  margin-bottom: 32px;
+}
+.profile-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.profile-forms-col, .profile-certs-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.profile-settings-card h3, .certificates-card h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 650;
+  border-bottom: 1px solid var(--border-color-soft);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.profile-settings-card select {
+  width: 100%;
+}
+.certs-intro {
+  font-size: 13px;
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+.certs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cert-card-item {
+  background: var(--hover-color);
+  border: 1px solid var(--border-color-soft);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+.cert-card-item:hover {
+  border-color: var(--ai-blue);
+  box-shadow: 0 4px 12px rgba(45, 136, 232, 0.1);
+}
+.cert-info-lbl h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cert-info-lbl p {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   📊 VISTA 11: TABLA DE LÍDERES (LEADERBOARD)
+   ========================================================================== */
+.leaderboard-header {
+  margin-bottom: 32px;
+}
+.leaderboard-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.leaderboard-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.leaderboard-table th, .leaderboard-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-size: 13.5px;
+}
+.leaderboard-table th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-sub);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.leaderboard-table tbody tr:hover {
+  background: var(--hover-color);
+}
+.leaderboard-table tbody tr.current-user-row {
+  background: rgba(45, 136, 232, 0.08);
+}
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+}
+.rank-1 { background: #FFD700; color: #000; }
+.rank-2 { background: #C0C0C0; color: #000; }
+.rank-3 { background: #CD7F32; color: #000; }
+.my-position-banner {
+  margin-top: 24px;
+  background: rgba(45, 136, 232, 0.15);
+  border: 1px solid var(--ai-blue);
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   📝 VISTA 12: REPRODUCTOR DE QUIZZES (QUIZ ENGINE)
+   ========================================================================== */
+.quiz-player-layout {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.quiz-progress-bar {
+  height: 6px;
+  background: var(--hover-color);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color-soft);
+}
+.quiz-progress-fill {
+  height: 100%;
+  background: var(--ai-blue);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.quiz-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.quiz-label-mini {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--coral);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.quiz-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--hover-color);
+  border: 1px solid var(--border-color-soft);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--coral);
+}
+.question-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-bottom: 12px;
+}
+.question-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+.quiz-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.quiz-option-btn {
+  background: var(--hover-color);
+  border: 1px solid var(--border-color-soft);
+  padding: 16px 20px;
+  border-radius: 12px;
+  color: var(--text-main);
+  text-align: left;
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  justify-content: flex-start;
+  width: 100%;
+}
+.quiz-option-btn:hover {
+  border-color: var(--ai-blue);
+  background: rgba(45, 136, 232, 0.05);
+}
+.quiz-option-btn.selected {
+  border-color: var(--ai-blue);
+  background: rgba(45, 136, 232, 0.15);
+  box-shadow: 0 0 12px rgba(45, 136, 232, 0.2);
+}
+.quiz-actions-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+/* ==========================================================================
+   📝 VISTA 13: RESULTADOS DEL QUIZ (REVIEW)
+   ========================================================================== */
+.quiz-review-layout {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.quiz-result-score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+.score-radial-progress {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--bg-card) 79%, transparent 80% 100%), conic-gradient(var(--ai-blue) 0%, var(--hover-color) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-main);
+  box-shadow: var(--shadow-premium);
+}
+.quiz-result-score-card h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 24px;
+}
+.quiz-review-headline {
+  margin-top: 8px;
+}
+.quiz-rewards-box {
+  background: rgba(255, 107, 71, 0.15);
+  border: 1px solid var(--coral);
+  padding: 10px 24px;
+  border-radius: 999px;
+  color: var(--coral);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.quiz-review-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.feedback-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+.feedback-question-item {
+  background: var(--hover-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left: 4px solid var(--border-color);
+}
+.feedback-question-item.correct {
+  border-left-color: var(--sage);
+}
+.feedback-question-item.incorrect {
+  border-left-color: var(--coral);
+}
+.feedback-q-text {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.feedback-ans {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.feedback-ans strong {
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   🎓 VISTA 14: VERIFICACIÓN PÚBLICA DE CERTIFICADO
+   ========================================================================== */
+.verify-cert-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  padding: 20px;
+}
+.verify-cert-card {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  border: 2px solid var(--border-glow);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, rgba(31, 45, 66, 0.9) 0%, rgba(9, 18, 30, 0.95) 100%);
+  border-radius: 24px;
+}
+.verify-glow-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--ai-blue) 0%, var(--coral) 100%);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+}
+.verify-cert-card .logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+.verification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(107, 144, 128, 0.15);
+  color: var(--sage);
+  border: 1px solid var(--sage);
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  margin: 0 auto;
+}
+.verify-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.verify-intro {
+  font-size: 13.5px;
+  color: var(--text-sub);
+}
+#verify-student-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+}
+.verify-divider {
+  height: 1px;
+  background: var(--border-color-soft);
+  width: 80px;
+  margin: 0 auto;
+}
+#verify-course-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ai-blue);
+}
+.verify-meta {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+.verify-footer {
+  font-size: 11px;
+  color: var(--mute);
+  border-top: 1px solid var(--border-color-soft);
+  padding-top: 20px;
+}
+
+/* ==========================================================================
+   📱 RESPONSIVE EXTENSION FOR NEW VIEWS
+   ========================================================================== */
+@media (max-width: 900px) {
+  .achievements-layout, .profile-layout, .community-layout {
+    grid-template-columns: 1fr;
+  }
+  .pricing-plans-grid {
+    grid-template-columns: 1fr;
+  }
+}
