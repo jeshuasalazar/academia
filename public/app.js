@@ -25,6 +25,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+  // Leer deep-link params desde ailearning.mx (/register?source=X&campaign=Y)
+  const _qp = new URLSearchParams(window.location.search);
+  if (_qp.get('source')) sessionStorage.setItem('ail_source', _qp.get('source'));
+  if (_qp.get('campaign')) sessionStorage.setItem('ail_campaign', _qp.get('campaign'));
+  // Auto-mostrar formulario de registro si la URL es /register
+  if (window.location.pathname === '/register') {
+    setTimeout(() => { const btn = document.getElementById('go-to-register'); if (btn) btn.click(); }, 50);
+  }
+
   // Lucide Icons Render
   lucide.createIcons();
 

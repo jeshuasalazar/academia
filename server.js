@@ -83,7 +83,12 @@ app.use('/api/billing', require('./routes/billing')); // Exento de rate limit pa
 app.use('/api/community', generalLimiter, require('./routes/community'));
 app.use('/api/prompts', generalLimiter, require('./routes/prompts'));
 
-// 7. Arrancar Servidor HTTP
+// 7. Catch-all: servir SPA para rutas del cliente (ej. /register)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// 8. Arrancar Servidor HTTP
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
   console.log(`👉 Acceso local: http://localhost:${PORT}`);
