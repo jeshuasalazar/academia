@@ -2669,3 +2669,42 @@ body.light-theme .prompt-card-body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   📱 MÓVIL PEQUEÑO (≤ 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 16px 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .content-canvas {
+    padding: 20px 14px;
+  }
+
+  .sidebar {
+    padding: 16px 14px;
+  }
+
+  /* Las tarjetas de curso de 360px mínimo desbordan en 375px */
+  .courses-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-input-wrapper {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .auth-card {
+    padding: 24px 18px;
+  }
+
+  .toast {
+    bottom: 16px;
+    max-width: calc(100vw - 24px);
+  }
+}
