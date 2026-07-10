@@ -25,10 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  // Leer deep-link params desde ailearning.mx (/register?source=X&campaign=Y)
+  // Leer deep-link params desde ailearning.mx (/register?source=X&campaign=Y&plan=Z)
   const _qp = new URLSearchParams(window.location.search);
   if (_qp.get('source')) sessionStorage.setItem('ail_source', _qp.get('source'));
   if (_qp.get('campaign')) sessionStorage.setItem('ail_campaign', _qp.get('campaign'));
+  // El plan elegido en la landing se hereda: se guarda y se retoma tras iniciar sesión
+  if (_qp.get('plan')) sessionStorage.setItem('ail_plan', _qp.get('plan'));
   // Auto-mostrar formulario de registro si la URL es /register
   if (window.location.pathname === '/register') {
     setTimeout(() => { const btn = document.getElementById('go-to-register'); if (btn) btn.click(); }, 50);
@@ -136,6 +138,7 @@ function setupAuthEvents() {
           
           showToast('¡Ingreso exitoso! Bienvenido.');
           checkAuth();
+          applyInheritedPlan();
         } else {
           showToast(data.error || 'Correo o contraseña incorrectos.');
         }
@@ -189,6 +192,18 @@ function setupAuthEvents() {
       checkAuth();
       showToast('Sesión cerrada.');
     });
+  }
+}
+
+// Si venía un plan elegido desde la landing, llevar al usuario directo a membresía para continuarlo
+function applyInheritedPlan() {
+  const inheritedPlan = sessionStorage.getItem('ail_plan');
+  if (!inheritedPlan) return;
+  sessionStorage.removeItem('ail_plan');
+  const paidPlans = ['esencial', 'ai-native-pro', 'monthly', 'annual'];
+  if (paidPlans.includes(inheritedPlan)) {
+    window.location.hash = '#/membership';
+    showToast('Continúa con el plan que elegiste para activarlo.');
   }
 }
 
