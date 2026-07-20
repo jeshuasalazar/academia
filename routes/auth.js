@@ -13,7 +13,11 @@ const {
 } = require('../middleware/validate');
 const { sendPasswordResetEmail } = require('../services/email');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
+// Sin fallback: un secreto conocido públicamente permite forjar tokens válidos.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET no está configurado. Define la variable de entorno antes de arrancar el servidor.');
+}
 
 /**
  * Obtener la fecha local formateada como YYYY-MM-DD según la zona horaria del usuario.

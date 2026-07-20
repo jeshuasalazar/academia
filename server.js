@@ -41,7 +41,14 @@ app.use(helmet({
     }
   }
 }));
-app.use(cors());
+// CORS restringido: solo los dominios propios pueden llamar la API desde otro
+// origen. Las peticiones same-origin (frontend servido por este Express) no
+// pasan por CORS, así que esto no afecta el flujo normal.
+const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://ailearning.mx,https://www.ailearning.mx,https://academia.ailearning.mx')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsAllowedOrigins, credentials: true }));
 app.use(compression());
 
 // 3. Limitadores de Tasa (Rate Limiting)
