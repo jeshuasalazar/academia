@@ -19,6 +19,14 @@ npm install
 npm start   # http://localhost:3000
 ```
 
+## SSO desde ailearning.mx
+La plataforma principal (ailearning.mx, Next.js + Supabase) puede mandar usuarios ya autenticados a `GET /sso?token=<jwt>`.
+
+- **Variable de entorno**: `ACADEMIA_SSO_SECRET` — secreto compartido con el servicio web de ailearning.mx en Railway (mismo valor en ambos). Generar con `openssl rand -hex 32`.
+- **Contrato del token**: JWT compacto **HS256** firmado con ese secreto. Claims: `sub` (user id de Supabase), `email`, `name`, `plan` (`explorador` | `esencial` | `ai-native-pro` | `corporativo`), `iss: "ailearning-platform"`, `aud: "academia"`, `iat`, `exp` (iat + 120 s).
+- Con token válido se hace find-or-create del alumno (interno, empresa aiLearning, plan mapeado: `ai-native-pro` y `corporativo` → plan `pro` del demo), se setea el actor en `localStorage` y se redirige a `/`.
+- Sin secreto configurado, sin token o con token inválido/expirado → redirect a `/` (el demo sigue funcionando igual).
+
 ## Deploy en Railway
 Repo listo: Nixpacks detecta Node, `npm start` arranca el server (usa `process.env.PORT`). Healthcheck: `/api/health`.
 La base de datos demo es `data/db.json` (se regenera desde `data/seed.js` si no existe; está en .gitignore).

@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const dbPath = path.join(__dirname, 'data', 'db.json');
@@ -532,6 +533,129 @@ app.get('/api/profesor/:id/resumen', (req, res) => {
     })),
     proximasSesiones
   });
+});
+
+// ============ SSO desde ailearning.mx ============
+
+// Mapeo plan plataforma → plan del catálogo local (data/seed.js PLANES)
+const SSO_PLAN_MAP = {
+  explorador: 'explorador',
+  esencial: 'esencial',
+  'ai-native-pro': 'pro',
+  corporativo: 'pro'
+};
+
+// Verifica un JWT compacto HS256 con crypto de Node (sin dependencias).
+// Devuelve { ok: true, payload } o { ok: false, reason }.
+function verifySsoToken(token, secret) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return { ok: false, reason: 'formato-invalido' };
+  const [headB64, payloadB64, sigB64] = parts;
+
+  let header, payload;
+  try {
+    header = JSON.parse(Buffer.from(headB64, 'base64url').toString('utf-8'));
+    payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8'));
+  } catch (e) {
+    return { ok: false, reason: 'json-invalido' };
+  }
+
+  // No confiar en el header para elegir algoritmo: solo se acepta HS256
+  if (!header || header.alg !== 'HS256') return { ok: false, reason: 'alg-no-soportado' };
+
+  const expected = crypto.createHmac('sha256', secret)
+    .update(`${headB64}.${payloadB64}`)
+    .digest();
+  const given = Buffer.from(sigB64, 'base64url');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(expected, given)) {
+    return { ok: false, reason: 'firma-invalida' };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || now >= payload.exp) return { ok: false, reason: 'expirado' };
+  if (payload.iss !== 'ailearning-platform') return { ok: false, reason: 'iss-invalido' };
+  if (payload.aud !== 'academia') return { ok: false, reason: 'aud-invalido' };
+  if (typeof payload.sub !== 'string' || !payload.sub) return { ok: false, reason: 'sub-faltante' };
+
+  return { ok: true, payload };
+}
+
+function inicialesDe(nombre) {
+  const ini = String(nombre || '').trim().split(/\s+/)
+    .map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return ini || 'AL';
+}
+
+app.get('/sso', (req, res) => {
+  const secret = process.env.ACADEMIA_SSO_SECRET;
+  const token = req.query.token;
+
+  if (!secret) {
+    console.warn('[sso] ACADEMIA_SSO_SECRET no configurado; redirigiendo a /');
+    return res.redirect('/');
+  }
+  if (!token || typeof token !== 'string') {
+    console.warn('[sso] falta ?token=; redirigiendo a /');
+    return res.redirect('/');
+  }
+
+  const result = verifySsoToken(token, secret);
+  if (!result.ok) {
+    console.warn(`[sso] token rechazado (${result.reason}); redirigiendo a /`);
+    return res.redirect('/');
+  }
+
+  const payload = result.payload;
+  const email = String(payload.email || '').toLowerCase();
+  const plan = SSO_PLAN_MAP[payload.plan] || 'explorador';
+
+  // Find-or-create del alumno (por ssoSub o por email, case-insensitive)
+  let alumno = db.alumnos.find(a => a.ssoSub === payload.sub)
+    || (email && db.alumnos.find(a => a.email && a.email.toLowerCase() === email));
+
+  if (!alumno) {
+    const shortHash = crypto.createHash('sha256').update(payload.sub).digest('hex').slice(0, 8);
+    const nombre = payload.name || email || 'Alumno aiLearning';
+    alumno = {
+      id: `al-sso-${shortHash}`,
+      nombre,
+      iniciales: inicialesDe(nombre),
+      email,
+      ssoSub: payload.sub,
+      empresaId: 'emp-ail',
+      tipo: 'interno',
+      plan,
+      xp: 0,
+      racha: 0
+    };
+    db.alumnos.push(alumno);
+    saveDb();
+  } else {
+    let dirty = false;
+    if (alumno.plan !== plan) { alumno.plan = plan; dirty = true; }
+    if (!alumno.ssoSub) { alumno.ssoSub = payload.sub; dirty = true; }
+    if (!alumno.email && email) { alumno.email = email; dirty = true; }
+    if (dirty) saveDb();
+  }
+
+  // Misma clave y forma que usa el switcher del front (public/js/core.js):
+  // localStorage.setItem('actor', JSON.stringify({ rol, id }))
+  const actorValue = JSON.stringify({ rol: 'alumno', id: alumno.id });
+  const actorLiteral = JSON.stringify(actorValue)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+
+  res.set('Cache-Control', 'no-store');
+  res.send(`<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Entrando a aiLearning Academia…</title></head>
+<body>
+<p>Entrando a aiLearning Academia…</p>
+<script>
+  localStorage.setItem('actor', ${actorLiteral});
+  location.replace('/');
+</script>
+</body>
+</html>`);
 });
 
 // ============ Startup ============
