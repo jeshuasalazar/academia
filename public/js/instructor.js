@@ -131,6 +131,15 @@
         '<div class="card" id="lec-form" style="padding:20px 22px;display:none;flex-direction:column;gap:12px">' +
           '<h2 style="font-size:16px;font-weight:700">Nueva lección</h2>' +
           '<input type="hidden" id="lec-modulo">' +
+          // Autogeneración con IA (rellena los campos; el instructor revisa)
+          '<div style="background:rgba(45,136,232,.08);border:1px solid rgba(45,136,232,.25);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">' +
+            '<span class="chip-mono" style="color:#5FA8F5">✨ Generar con IA</span>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">' +
+              '<input id="lec-ia-tema" class="input" placeholder="Tema de la sesión (ej. conciliación bancaria con Claude)" style="font-weight:400;flex:1;min-width:220px">' +
+              '<button class="btn btn-sm" id="lec-ia-btn" style="background:var(--blue);color:#fff;border:none">Generar borrador</button>' +
+            '</div>' +
+            '<span id="lec-ia-status" style="color:var(--mute);font-size:12px"></span>' +
+          '</div>' +
           field('Título', input('lec-titulo', 'Ej. Grabación: conciliación con Claude')) +
           '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
             field('Duración (min)', input('lec-dur', '42')) +
@@ -183,6 +192,32 @@
     });
     root.querySelector('#lec-cancel').addEventListener('click', function () {
       root.querySelector('#lec-form').style.display = 'none';
+    });
+
+    // generar borrador con IA → rellena los campos del formulario
+    root.querySelector('#lec-ia-btn').addEventListener('click', async function () {
+      const tema = root.querySelector('#lec-ia-tema').value.trim();
+      if (!tema) { toast('Escribe el tema'); return; }
+      const st = root.querySelector('#lec-ia-status'); st.textContent = 'Generando con IA…';
+      try {
+        const draft = await API.post('/api/instructor/generar', { tema: tema, curso: curso.titulo, plan: curso.requiredPlan });
+        const s = draft.structured || {};
+        if (draft.titulo) root.querySelector('#lec-titulo').value = draft.titulo;
+        root.querySelector('#lec-desc').value = s.descripcion || '';
+        root.querySelector('#lec-resumen').value = s.resumen || '';
+        root.querySelector('#lec-puntos').value = (s.puntos_clave || []).join('\n');
+        root.querySelector('#lec-notas').value = s.notas || '';
+        root.querySelector('#lec-preg').value = (s.preguntas_pase || []).map(function (q) {
+          const correcta = q.opciones[q.correcta];
+          const otras = q.opciones.filter(function (_, i) { return i !== q.correcta; });
+          return [q.q, correcta].concat(otras).join(' | ');
+        }).join('\n');
+        st.textContent = 'Borrador generado. Revisa y edita antes de guardar.';
+      } catch (e) {
+        st.textContent = e.message === 'ia-no-configurada'
+          ? 'La generación con IA no está configurada (falta ANTHROPIC_API_KEY).'
+          : (e.message || 'No se pudo generar.');
+      }
     });
 
     // guardar lección
