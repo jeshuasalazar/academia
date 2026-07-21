@@ -57,6 +57,19 @@
         throw new Error(msg);
       }
       return r.json();
+    },
+    async patch(path, body) {
+      const r = await fetch(path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      if (!r.ok) {
+        let msg = 'Error ' + r.status + ' en ' + path;
+        try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (e) {}
+        throw new Error(msg);
+      }
+      return r.json();
     }
   };
 
@@ -215,7 +228,7 @@
   }
 
   const PAGE_TITLES = {
-    alumno: { inicio: 'Inicio', rutas: 'Mi ruta', curso: 'Curso', leccion: 'Lección', vivo: 'Clases en vivo', foro: 'Foro de dudas', materiales: 'Materiales', membresia: 'Mi plan', perfil: 'Mi perfil' }
+    alumno: { inicio: 'Inicio', rutas: 'Mi ruta', curso: 'Curso', leccion: 'Lección', vivo: 'Clases en vivo', foro: 'Foro de dudas', materiales: 'Materiales', membresia: 'Mi plan', perfil: 'Mi perfil', instructor: 'Mis cursos', 'instructor-curso': 'Editar curso', admin: 'Instructores' }
   };
 
   /* ---------------- estado global cacheado ---------------- */
@@ -266,17 +279,31 @@
       const st = window._state.data;
       const a = st.alumno;
       const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'EXPLORADOR';
-      return { nombre: a.nombre, iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp, racha: a.racha, avatarUrl: a.avatarUrl || null, avatarGrad: null, planTag, email: a.email || '' };
+      return { nombre: a.nombre, iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp, racha: a.racha, avatarUrl: a.avatarUrl || null, avatarGrad: null, planTag, email: a.email || '', role: a.role || 'student' };
     }
     try {
       const st = await API.get('/api/state?alumnoId=' + encodeURIComponent(id));
       window._state = { alumnoId: id, data: st };
       const a = st.alumno || {};
       const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'EXPLORADOR';
-      return { nombre: a.nombre || 'Alumno', iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp || 0, racha: a.racha || 0, avatarUrl: a.avatarUrl || null, planTag, email: a.email || '' };
+      return { nombre: a.nombre || 'Alumno', iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp || 0, racha: a.racha || 0, avatarUrl: a.avatarUrl || null, planTag, email: a.email || '', role: a.role || 'student' };
     } catch (e) {
-      return { nombre: 'Alumno', iniciales: '??', xp: 0, racha: 0, avatarUrl: null, planTag: 'EXPLORADOR', email: '' };
+      return { nombre: 'Alumno', iniciales: '??', xp: 0, racha: 0, avatarUrl: null, planTag: 'EXPLORADOR', email: '', role: 'student' };
     }
+  }
+
+  // Nav extra para instructores/owner: sección ENSEÑAR (y ADMIN para owner).
+  const NAV_INSTRUCTOR = { label: 'ENSEÑAR', items: [
+    { label: 'Mis cursos', hash: '#/alumno/instructor', icon: 'route', match: ['instructor'] }
+  ]};
+  const NAV_OWNER = { label: 'ADMIN', items: [
+    { label: 'Instructores', hash: '#/alumno/admin', icon: 'users', match: ['admin'] }
+  ]};
+  function navFor(profile) {
+    const nav = NAV_ALUMNO.slice();
+    if (profile && (profile.role === 'instructor' || profile.role === 'owner')) nav.push(NAV_INSTRUCTOR);
+    if (profile && profile.role === 'owner') nav.push(NAV_OWNER);
+    return nav;
   }
 
   /* ---------------- shell + dispatch ---------------- */
@@ -297,7 +324,7 @@
 
     const app = document.getElementById('app');
     const profile = await getActorProfile(rol, actor.id);
-    const nav = getNav(rol);
+    const nav = navFor(profile);
     const title = (PAGE_TITLES[rol] && PAGE_TITLES[rol][vista]) || (vista ? vista.charAt(0).toUpperCase() + vista.slice(1) : '');
     const isAlumno = rol === 'alumno';
 

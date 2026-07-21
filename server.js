@@ -23,6 +23,56 @@ function legacyOnly(res) {
   return res.status(501).json({ error: 'no-disponible-en-supabase' });
 }
 
+// ---- Sesión firmada de la academia (cookie httpOnly) ----------------------
+// El actor de localStorage NO es prueba de identidad: para operaciones de
+// instructor (crear cursos, subir contenido) se exige esta cookie, emitida en
+// /sso y firmada con ACADEMIA_SSO_SECRET (HS256). Vive 12 h.
+const ACAD_COOKIE = 'ail_acad';
+const ACAD_SESSION_TTL = 12 * 60 * 60; // segundos
+
+function b64url(obj) {
+  return Buffer.from(JSON.stringify(obj), 'utf8').toString('base64url');
+}
+function signAcadSession(payload, secret) {
+  const now = Math.floor(Date.now() / 1000);
+  const body = b64url(Object.assign({ iat: now, exp: now + ACAD_SESSION_TTL }, payload));
+  const sig = crypto.createHmac('sha256', secret).update(body).digest('base64url');
+  return body + '.' + sig;
+}
+function verifyAcadSession(tokenCookie, secret) {
+  if (!tokenCookie || !secret) return null;
+  const i = tokenCookie.lastIndexOf('.');
+  if (i < 0) return null;
+  const body = tokenCookie.slice(0, i), sig = tokenCookie.slice(i + 1);
+  const expected = crypto.createHmac('sha256', secret).update(body).digest();
+  const given = Buffer.from(sig, 'base64url');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(expected, given)) return null;
+  let payload;
+  try { payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch (e) { return null; }
+  if (typeof payload.exp !== 'number' || Math.floor(Date.now() / 1000) >= payload.exp) return null;
+  return payload; // { sub, role, email, iat, exp }
+}
+function parseCookies(req) {
+  const out = {};
+  const raw = req.headers.cookie;
+  if (!raw) return out;
+  raw.split(';').forEach((p) => {
+    const idx = p.indexOf('=');
+    if (idx > 0) out[p.slice(0, idx).trim()] = decodeURIComponent(p.slice(idx + 1).trim());
+  });
+  return out;
+}
+function sessionUser(req) {
+  return verifyAcadSession(parseCookies(req)[ACAD_COOKIE], process.env.ACADEMIA_SSO_SECRET);
+}
+// Guard: exige sesión con rol permitido. Devuelve el usuario o responde 401/403.
+function requireRole(req, res, roles) {
+  const u = sessionUser(req);
+  if (!u) { res.status(401).json({ error: 'sesion-requerida' }); return null; }
+  if (roles && roles.indexOf(u.role) === -1) { res.status(403).json({ error: 'sin-permiso' }); return null; }
+  return u;
+}
+
 // Middleware
 app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' })); // avatares base64 (hasta ~3 MB de imagen)
@@ -616,6 +666,73 @@ app.post('/api/perfil/avatar', ah(async (req, res) => {
   res.json({ ok: true, avatarUrl: r.avatarUrl });
 }));
 
+// ============ Instructor (crear cursos y subir contenido) ============
+// Todos exigen sesión firmada con rol instructor u owner (requireRole).
+
+// GET /api/instructor/me → rol + cursos que imparte
+app.get('/api/instructor/me', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  const cursos = await sb.listCursosDeInstructor(u.sub, u.role);
+  res.json({ role: u.role, email: u.email, cursos });
+}));
+
+// POST /api/instructor/cursos  { titulo, desc, requiredPlan, nivel }
+app.post('/api/instructor/cursos', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  if (!req.body.titulo) return res.status(400).json({ error: 'titulo required' });
+  res.status(201).json(await sb.crearCurso(u.sub, req.body));
+}));
+
+// PATCH /api/instructor/cursos/:id  { titulo?, desc?, requiredPlan?, nivel?, status? }
+app.patch('/api/instructor/cursos/:id', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  res.json(await sb.actualizarCurso(u.sub, u.role, req.params.id, req.body));
+}));
+
+// POST /api/instructor/cursos/:id/modulos  { titulo }
+app.post('/api/instructor/cursos/:id/modulos', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  if (!req.body.titulo) return res.status(400).json({ error: 'titulo required' });
+  res.status(201).json(await sb.crearModulo(u.sub, u.role, req.params.id, req.body.titulo));
+}));
+
+// POST /api/instructor/lecciones  { lessonId?, moduleId, titulo, dur, video, structured, status }
+app.post('/api/instructor/lecciones', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  if (!req.body.titulo) return res.status(400).json({ error: 'titulo required' });
+  res.status(201).json(await sb.guardarLeccion(u.sub, u.role, req.body));
+}));
+
+// POST /api/instructor/lecciones/:id/materiales  { nombre, dataUrl } | { nombre, url }
+app.post('/api/instructor/lecciones/:id/materiales', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
+  res.status(201).json(await sb.subirMaterial(u.sub, u.role, req.params.id, req.body));
+}));
+
+// ============ Owner (alta de usuarios especiales) ============
+// GET /api/admin/instructores → lista instructores/owner
+app.get('/api/admin/instructores', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['owner']); if (!u) return;
+  res.json(await sb.listInstructors());
+}));
+
+// POST /api/admin/instructores  { email, role: 'instructor'|'student' }
+// SOLO el creador (owner) puede promover/degradar usuarios especiales.
+app.post('/api/admin/instructores', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const u = requireRole(req, res, ['owner']); if (!u) return;
+  const role = req.body.role === 'student' ? 'student' : 'instructor';
+  if (!req.body.email) return res.status(400).json({ error: 'email required' });
+  res.json(await sb.setRoleByEmail(req.body.email, role));
+}));
+
 // ============ SSO desde ailearning.mx ============
 
 // Mapeo plan plataforma → plan del catálogo local (data/seed.js PLANES)
@@ -706,6 +823,15 @@ app.get('/sso', ah(async (req, res) => {
     actorId = alumno.id;
     welcomeNombre = alumno.nombre;
     welcomePlan = plan;
+
+    // Sesión firmada (identidad + rol) para operaciones de instructor.
+    const role = await sb.resolveRole(alumno.id, email);
+    const sessionToken = signAcadSession({ sub: alumno.id, role, email }, secret);
+    res.cookie ? res.cookie(ACAD_COOKIE, sessionToken, {
+      httpOnly: true, secure: true, sameSite: 'lax', maxAge: ACAD_SESSION_TTL * 1000, path: '/'
+    }) : res.setHeader('Set-Cookie',
+      ACAD_COOKIE + '=' + encodeURIComponent(sessionToken) +
+      '; HttpOnly; Secure; SameSite=Lax; Max-Age=' + ACAD_SESSION_TTL + '; Path=/');
   } else {
     // Find-or-create del alumno (por ssoSub o por email, case-insensitive)
     let alumno = db.alumnos.find(a => a.ssoSub === payload.sub)

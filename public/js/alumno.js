@@ -374,6 +374,66 @@
 
   /* ================= VISTA: leccion ================= */
 
+  // Render amigable del contenido estructurado de una sesión (resumen, puntos
+  // clave, notas, y quiz "preguntas para pasar de clase"). Solo muestra lo que
+  // el instructor haya cargado.
+  function sesionEstructuraHtml(sesion) {
+    const bloques = [];
+    if (sesion.resumen) {
+      bloques.push('<div><span class="chip-mono">Resumen de la sesión</span>' +
+        '<p class="p" style="margin-top:8px">' + esc(sesion.resumen) + '</p></div>');
+    }
+    if (sesion.puntosClave && sesion.puntosClave.length) {
+      bloques.push('<div><span class="chip-mono">Puntos importantes</span>' +
+        '<ul style="margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px">' +
+        sesion.puntosClave.map(function (p) { return '<li class="p" style="margin:0">' + esc(p) + '</li>'; }).join('') +
+        '</ul></div>');
+    }
+    if (sesion.notas) {
+      bloques.push('<div><span class="chip-mono">Notas</span>' +
+        '<p class="p" style="margin-top:8px;white-space:pre-wrap">' + esc(sesion.notas) + '</p></div>');
+    }
+    let quiz = '';
+    if (sesion.preguntas && sesion.preguntas.length) {
+      quiz = '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px" data-quiz>' +
+        '<span class="chip-mono">Preguntas para pasar de clase</span>' +
+        sesion.preguntas.map(function (q, qi) {
+          return '<div data-q="' + qi + '" data-correcta="' + (q.correcta != null ? q.correcta : -1) + '">' +
+            '<p class="p" style="font-weight:600;margin:0 0 8px">' + (qi + 1) + '. ' + esc(q.q || q.pregunta || '') + '</p>' +
+            '<div style="display:flex;flex-direction:column;gap:6px">' +
+            (q.opciones || []).map(function (op, oi) {
+              return '<button class="btn btn-ghost btn-sm" style="justify-content:flex-start;text-align:left" data-opt="' + oi + '">' + esc(op) + '</button>';
+            }).join('') +
+            '</div><span class="quiz-fb" style="font-size:12.5px;margin-top:6px;display:none"></span>' +
+            '</div>';
+        }).join('') +
+        '</div>';
+    }
+    if (!bloques.length && !quiz) return '';
+    const info = bloques.length
+      ? '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">' + bloques.join('') + '</div>'
+      : '';
+    return info + quiz;
+  }
+
+  function wireQuiz(root) {
+    root.querySelectorAll('[data-quiz] [data-q]').forEach(function (qEl) {
+      const correcta = parseInt(qEl.getAttribute('data-correcta'), 10);
+      const fb = qEl.querySelector('.quiz-fb');
+      qEl.querySelectorAll('[data-opt]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const oi = parseInt(btn.getAttribute('data-opt'), 10);
+          const ok = oi === correcta;
+          fb.style.display = 'block';
+          fb.style.color = ok ? 'var(--ok, #22A06B)' : 'var(--coral)';
+          fb.textContent = ok ? '✓ ¡Correcto!' : 'Revisa de nuevo — intenta otra opción.';
+          qEl.querySelectorAll('[data-opt]').forEach(function (b) { b.style.borderColor = ''; });
+          btn.style.borderColor = ok ? 'var(--ok, #22A06B)' : 'var(--coral)';
+        });
+      });
+    });
+  }
+
   async function vistaLeccion(root, params) {
     const [cursoId, sesionId] = params;
     root.innerHTML = '<div class="empty-state">Cargando lección…</div>';
@@ -476,6 +536,7 @@
               '<button class="btn ' + (completed ? 'btn-ghost' : 'btn-coral') + '" data-complete="' + esc(sesion.id) + '" ' + (completed ? 'disabled' : '') + '>' + (completed ? '✓ Completada' : 'Marcar completada') + '</button>' +
               (nextS ? '<button class="btn btn-ghost" data-go="#/alumno/leccion/' + esc(cursoId) + '/' + esc(nextS.id) + '">Siguiente lección →</button>' : '') +
             '</div>' +
+            sesionEstructuraHtml(sesion) +
             '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">' +
               '<span class="chip-mono">Materiales de esta sesión</span>' +
               (state.materialesBloqueados
@@ -521,6 +582,7 @@
       '</div>';
 
     wireCommon(root);
+    wireQuiz(root);
 
     const completeBtn = root.querySelector('[data-complete]');
     if (completeBtn) completeBtn.addEventListener('click', async () => {
