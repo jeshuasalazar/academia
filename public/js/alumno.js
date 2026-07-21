@@ -242,6 +242,18 @@
       '</div>';
 
     wireCommon(root);
+
+    // Bienvenida de una sola vez tras entrar por SSO (ver server.js /sso)
+    try {
+      const rawWelcome = sessionStorage.getItem('sso_welcome');
+      if (rawWelcome) {
+        const welcome = JSON.parse(rawWelcome);
+        const nombreBienvenida = (welcome.nombre || '').split(' ')[0] || welcome.nombre || 'Alumno';
+        const planTagBienvenida = (window.PLAN_TAGS && window.PLAN_TAGS[welcome.plan]) || welcome.plan || '';
+        toast('¡Bienvenido, ' + nombreBienvenida + '! Tu plan ' + planTagBienvenida + ' ya está activo.');
+        sessionStorage.removeItem('sso_welcome');
+      }
+    } catch (e) {}
   }
 
   /* ================= VISTA: rutas ================= */

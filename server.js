@@ -644,6 +644,11 @@ app.get('/sso', (req, res) => {
   const actorLiteral = JSON.stringify(actorValue)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 
+  // Bienvenida de una sola vez (leída y borrada por public/js/alumno.js en la vista "inicio")
+  const welcomeValue = JSON.stringify({ nombre: alumno.nombre, plan: alumno.plan });
+  const welcomeLiteral = JSON.stringify(welcomeValue)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+
   res.set('Cache-Control', 'no-store');
   res.send(`<!doctype html>
 <html lang="es">
@@ -652,7 +657,8 @@ app.get('/sso', (req, res) => {
 <p>Entrando a aiLearning Academia…</p>
 <script>
   localStorage.setItem('actor', ${actorLiteral});
-  location.replace('/');
+  sessionStorage.setItem('sso_welcome', ${welcomeLiteral});
+  location.replace('/#/alumno');
 </script>
 </body>
 </html>`);
