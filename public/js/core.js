@@ -1,8 +1,29 @@
 /* ============ aiLearning Academia — core.js ============
-   API client, router, helpers UI, shell (sidebar/header/tabbar), switcher de rol.
+   API client, router, helpers UI, shell (sidebar/header/tabbar).
+   Identidad: SOLO por SSO desde la plataforma (ailearning.mx). Sin demo de roles.
 ============================================================ */
 (function () {
   'use strict';
+
+  /* ---------------- plataforma (identidad / cuenta) ---------------- */
+  // La academia no tiene auth propia: login, cuenta y logout viven en la
+  // plataforma canónica. window.PLATFORM_URL permite override por si cambia.
+  var PLATFORM_URL = (window.PLATFORM_URL || 'https://ailearning.mx').replace(/\/+$/, '');
+  window.PLATFORM_URL = PLATFORM_URL;
+  // Entrada: /api/sso/academia resuelve login + onboarding + emite el token SSO.
+  window.goToLogin = function goToLogin() {
+    window.location.href = PLATFORM_URL + '/api/sso/academia';
+  };
+  // Salida: logout real en la plataforma (limpia sesión de Supabase Auth).
+  window.goToLogout = function goToLogout() {
+    try { localStorage.removeItem('actor'); } catch (e) {}
+    window._state = null;
+    window.location.href = PLATFORM_URL + '/logout';
+  };
+  // Ajustes de cuenta (cambiar nombre/correo/contraseña) en la plataforma.
+  window.goToAccount = function goToAccount() {
+    window.location.href = PLATFORM_URL + '/cuenta';
+  };
 
   /* ---------------- helpers ---------------- */
 
@@ -92,22 +113,21 @@
   }
 
   function defaultVista(rol) {
-    if (rol === 'alumno') return 'inicio';
-    if (rol === 'profesor') return 'panel';
-    if (rol === 'capacitadora') return 'panel';
     return 'inicio';
   }
 
   async function renderRoute() {
     const parts = parseHash();
     const actor = window.ACTOR;
-    if (!actor || parts.length === 0) {
-      await renderRoleSelector();
+    // Sin sesión: la academia no tiene login propio → a la plataforma por SSO.
+    if (!actor) {
+      renderLoginRedirect();
       return;
     }
-    const rol = parts[0] || actor.rol;
-    const vista = parts[1] || defaultVista(rol);
-    const params = parts.slice(2);
+    // Solo hay un rol real: alumno. Cualquier hash raro cae al inicio del alumno.
+    const rol = 'alumno';
+    const vista = (parts[0] === 'alumno' && parts[1]) ? parts[1] : defaultVista(rol);
+    const params = (parts[0] === 'alumno') ? parts.slice(2) : [];
     await renderShellAndDispatch(rol, vista, params);
   }
 
@@ -186,80 +206,24 @@
     ]},
     { label: 'CUENTA', items: [
       { label: 'Mi plan', hash: '#/alumno/membresia', icon: 'plan', match: ['membresia'] },
-      { label: 'Cambiar de rol', action: 'switch-role', icon: 'swap' }
-    ]}
-  ];
-
-  const NAV_PROFESOR_FALLBACK = [
-    { label: 'PROFESOR', items: [
-      { label: 'Panel', hash: '#/profesor/panel', icon: 'home', match: ['panel'] },
-      { label: 'Foro', hash: '#/profesor/foro', icon: 'forum', match: ['foro'] },
-      { label: 'Materiales', hash: '#/profesor/materiales', icon: 'file', match: ['materiales'] }
-    ]},
-    { label: 'CUENTA', items: [
-      { label: 'Cambiar de rol', action: 'switch-role', icon: 'swap' }
-    ]}
-  ];
-
-  const NAV_CAPACITADORA_FALLBACK = [
-    { label: 'CAPACITADORA', items: [
-      { label: 'Panel', hash: '#/capacitadora/panel', icon: 'home', match: ['panel'] },
-      { label: 'Cursos', hash: '#/capacitadora/cursos', icon: 'route', match: ['cursos'] },
-      { label: 'Desbloqueos', hash: '#/capacitadora/desbloqueos', icon: 'lock', match: ['desbloqueos'] },
-      { label: 'Alumnos', hash: '#/capacitadora/alumnos', icon: 'users', match: ['alumnos'] }
-    ]},
-    { label: 'CUENTA', items: [
-      { label: 'Cambiar de rol', action: 'switch-role', icon: 'swap' }
+      { label: 'Mi perfil', hash: '#/alumno/perfil', icon: 'users', match: ['perfil'] }
     ]}
   ];
 
   function getNav(rol) {
-    if (rol === 'alumno') return NAV_ALUMNO;
-    if (rol === 'profesor') return (window.NAV_PROFESOR && window.NAV_PROFESOR.length) ? window.NAV_PROFESOR : NAV_PROFESOR_FALLBACK;
-    if (rol === 'capacitadora') return (window.NAV_CAPACITADORA && window.NAV_CAPACITADORA.length) ? window.NAV_CAPACITADORA : NAV_CAPACITADORA_FALLBACK;
-    return [];
+    return NAV_ALUMNO;
   }
 
   const PAGE_TITLES = {
-    alumno: { inicio: 'Inicio', rutas: 'Mi ruta', curso: 'Curso', leccion: 'Lección', vivo: 'Clases en vivo', foro: 'Foro de dudas', materiales: 'Materiales', membresia: 'Mi plan' },
-    profesor: { panel: 'Panel del profesor', curso: 'Curso', sesiones: 'Sesiones', foro: 'Foro', materiales: 'Materiales' },
-    capacitadora: { panel: 'Panel de la capacitadora', cursos: 'Cursos', desbloqueos: 'Desbloqueos', alumnos: 'Alumnos' }
+    alumno: { inicio: 'Inicio', rutas: 'Mi ruta', curso: 'Curso', leccion: 'Lección', vivo: 'Clases en vivo', foro: 'Foro de dudas', materiales: 'Materiales', membresia: 'Mi plan', perfil: 'Mi perfil' }
   };
 
   /* ---------------- estado global cacheado ---------------- */
 
   window._state = null; // cache para alumno.js: { alumnoId, data }
-  let _globalState = null; // empresas / profesores para selector y perfiles
 
-  async function getGlobalState() {
-    if (_globalState) return _globalState;
-    try {
-      _globalState = await API.get('/api/state?alumnoId=al-1');
-    } catch (e) {
-      _globalState = { empresas: [], profesores: [], alumnos: [] };
-    }
-    return _globalState;
-  }
-
-  const KNOWN_ALUMNOS_FALLBACK = [
-    { id: 'al-1', nombre: 'Jesús Salazar', iniciales: 'JS', empresaId: 'emp-ail', tipo: 'interno', plan: 'pro' },
-    { id: 'al-2', nombre: 'Ana Torres', iniciales: 'AT', empresaId: 'emp-conta', tipo: 'externo', plan: 'corporativo' },
-    { id: 'al-3', nombre: 'Luis Peña', iniciales: 'LP', empresaId: 'emp-dev', tipo: 'externo', plan: 'corporativo' },
-    { id: 'al-4', nombre: 'Karla Medina', iniciales: 'KM', empresaId: 'emp-ail', tipo: 'interno', plan: 'explorador' },
-    { id: 'al-5', nombre: 'Roberto Díaz', iniciales: 'RD', empresaId: 'emp-ail', tipo: 'interno', plan: 'esencial' }
-  ];
   const PLAN_TAGS = { explorador: 'EXPLORADOR', esencial: 'ESENCIAL', pro: 'AI-NATIVE PRO', corporativo: 'CORPORATIVO' };
   window.PLAN_TAGS = PLAN_TAGS;
-  const KNOWN_PROFESORES_FALLBACK = [
-    { id: 'prof-1', nombre: 'CP Mariana Gutiérrez', iniciales: 'MG', empresaId: 'emp-conta' },
-    { id: 'prof-2', nombre: 'Ing. Diego Ramos', iniciales: 'DR', empresaId: 'emp-dev' },
-    { id: 'prof-3', nombre: 'Lic. Sofía Herrera', iniciales: 'SH', empresaId: 'emp-ail' }
-  ];
-  const KNOWN_EMPRESAS_FALLBACK = [
-    { id: 'emp-ail', nombre: 'aiLearning', tipo: 'propietaria', color: '#2D88E8' },
-    { id: 'emp-conta', nombre: 'ContaFlow Capacitación', tipo: 'externa', color: '#22A06B' },
-    { id: 'emp-dev', nombre: 'DevCamp MX', tipo: 'externa', color: '#8B5CF6' }
-  ];
 
   function inicialesDe(nombre) {
     const p = String(nombre || '').trim().split(/\s+/);
@@ -272,110 +236,47 @@
 
   const _ui = { notifOpen: false };
 
-  /* ---------------- selector de rol ---------------- */
+  /* ---------------- pantalla de acceso (sin sesión) ---------------- */
+  // La academia no tiene login propio; envía a la plataforma para autenticar.
 
-  async function renderRoleSelector() {
+  function renderLoginRedirect() {
     const app = document.getElementById('app');
-    app.innerHTML = '<div class="role-select-wrap"><span style="color:var(--mute);font-family:JetBrains Mono,monospace;font-size:12px">Cargando…</span></div>';
-
-    let g;
-    try { g = await getGlobalState(); } catch (e) { g = {}; }
-    const empresas = (g.empresas && g.empresas.length) ? g.empresas : KNOWN_EMPRESAS_FALLBACK;
-    const profesores = (g.profesores && g.profesores.length) ? g.profesores : KNOWN_PROFESORES_FALLBACK;
-    const alumnos = (g.alumnos && g.alumnos.length) ? g.alumnos : KNOWN_ALUMNOS_FALLBACK;
-
-    const empresasByAlumno = {};
-    empresas.forEach(e => empresasByAlumno[e.id] = e);
-
-    function alumnoCard(a) {
-      const emp = empresasByAlumno[a.empresaId];
-      const planTag = a.plan ? (PLAN_TAGS[a.plan] || a.plan.toUpperCase()) : '';
-      return '<button class="role-card" data-select-role="alumno" data-select-id="' + esc(a.id) + '">' +
-        '<span class="avatar sm">' + esc(a.iniciales || inicialesDe(a.nombre)) + '</span>' +
-        '<span class="role-card-txt"><span class="role-card-name">' + esc(a.nombre) + '</span>' +
-        '<span class="role-card-sub">' + esc(emp ? emp.nombre : '') + (a.tipo ? ' · ' + esc(a.tipo) : '') + '</span>' +
-        (planTag ? '<span class="chip-mono" style="width:fit-content;margin-top:2px">' + esc(planTag) + '</span>' : '') +
-        '</span>' +
-        '</button>';
-    }
-    function profCard(p) {
-      const emp = empresasByAlumno[p.empresaId];
-      return '<button class="role-card" data-select-role="profesor" data-select-id="' + esc(p.id) + '">' +
-        '<span class="avatar sm" style="background:' + (p.avatarGrad || 'linear-gradient(135deg,#5FA8F5,#1A5FB4)') + '">' + esc(p.iniciales || inicialesDe(p.nombre)) + '</span>' +
-        '<span class="role-card-txt"><span class="role-card-name">' + esc(p.nombre) + '</span>' +
-        '<span class="role-card-sub">' + esc(emp ? emp.nombre : '') + '</span></span>' +
-        '</button>';
-    }
-    function empCard(e) {
-      return '<button class="role-card" data-select-role="capacitadora" data-select-id="' + esc(e.id) + '">' +
-        '<span class="avatar sm" style="background:' + esc(e.color || 'var(--blue)') + '">' + esc(inicialesDe(e.nombre)) + '</span>' +
-        '<span class="role-card-txt"><span class="role-card-name">' + esc(e.nombre) + '</span>' +
-        '<span class="role-card-sub">' + esc(e.tipo === 'propietaria' ? 'Empresa propietaria' : 'Empresa capacitadora externa') + '</span></span>' +
-        '</button>';
-    }
-
     app.innerHTML =
       '<div class="role-select-wrap">' +
         '<div class="role-select-logo">' +
           '<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#2D88E8,#1A5FB4);color:#fff">' + ICON('building', 20) + '</span>' +
           'aiLearning <span class="chip-academia">ACADEMIA</span>' +
         '</div>' +
-        '<div style="text-align:center;display:flex;flex-direction:column;gap:8px;max-width:520px">' +
-          '<h1 class="h1" style="font-size:28px">¿Quién eres hoy?</h1>' +
-          '<p class="p" style="text-align:center">Elige tu perfil para entrar. No necesitas contraseña — esto es una demo multi-tenant.</p>' +
-        '</div>' +
-        '<div class="role-cols">' +
-          '<div class="role-col"><div class="role-col-title">ALUMNO</div>' + alumnos.map(alumnoCard).join('') + '</div>' +
-          '<div class="role-col"><div class="role-col-title">PROFESOR</div>' + profesores.map(profCard).join('') + '</div>' +
-          '<div class="role-col"><div class="role-col-title">EMPRESA CAPACITADORA</div>' + empresas.map(empCard).join('') + '</div>' +
+        '<div style="text-align:center;display:flex;flex-direction:column;gap:14px;max-width:420px">' +
+          '<h1 class="h1" style="font-size:26px">Entra a tu Academia</h1>' +
+          '<p class="p" style="text-align:center">Inicia sesión con tu cuenta de aiLearning para acceder a tus cursos.</p>' +
+          '<button class="btn-primary" id="btn-login" style="margin:0 auto">Iniciar sesión</button>' +
         '</div>' +
       '</div>';
-
-    app.querySelectorAll('[data-select-role]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const rol = btn.getAttribute('data-select-role');
-        const id = btn.getAttribute('data-select-id');
-        setActor(rol, id);
-        window._state = null;
-        _globalState = null;
-        const dest = rol === 'alumno' ? '#/alumno/inicio' : (rol === 'profesor' ? '#/profesor/panel' : '#/capacitadora/panel');
-        go(dest);
-      });
-    });
+    var b = document.getElementById('btn-login');
+    if (b) b.addEventListener('click', function () { window.goToLogin(); });
+    // Redirección automática tras un instante (por si no hay interacción).
+    setTimeout(function () { if (!window.ACTOR) window.goToLogin(); }, 1200);
   }
 
   /* ---------------- perfil del actor (para header/sidebar) ---------------- */
 
   async function getActorProfile(rol, id) {
-    const g = await getGlobalState();
-    if (rol === 'alumno') {
-      if (window._state && window._state.alumnoId === id && window._state.data && window._state.data.alumno) {
-        const st = window._state.data;
-        const a = st.alumno;
-        const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'CORPORATIVO';
-        return { nombre: a.nombre, iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp, racha: a.racha, avatarGrad: null, planTag };
-      }
-      try {
-        const st = await API.get('/api/state?alumnoId=' + encodeURIComponent(id));
-        window._state = { alumnoId: id, data: st };
-        const a = st.alumno || {};
-        const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'CORPORATIVO';
-        return { nombre: a.nombre || 'Alumno', iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp || 0, racha: a.racha || 0, planTag };
-      } catch (e) {
-        return { nombre: 'Alumno', iniciales: '??', xp: 0, racha: 0, planTag: 'CORPORATIVO' };
-      }
+    if (window._state && window._state.alumnoId === id && window._state.data && window._state.data.alumno) {
+      const st = window._state.data;
+      const a = st.alumno;
+      const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'EXPLORADOR';
+      return { nombre: a.nombre, iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp, racha: a.racha, avatarUrl: a.avatarUrl || null, avatarGrad: null, planTag, email: a.email || '' };
     }
-    if (rol === 'profesor') {
-      const list = (g.profesores && g.profesores.length) ? g.profesores : KNOWN_PROFESORES_FALLBACK;
-      const p = list.find(x => x.id === id) || {};
-      return { nombre: p.nombre || 'Profesor', iniciales: p.iniciales || inicialesDe(p.nombre), avatarGrad: p.avatarGrad };
+    try {
+      const st = await API.get('/api/state?alumnoId=' + encodeURIComponent(id));
+      window._state = { alumnoId: id, data: st };
+      const a = st.alumno || {};
+      const planTag = (st.planInfo && st.planInfo.tag) || PLAN_TAGS[a.plan] || 'EXPLORADOR';
+      return { nombre: a.nombre || 'Alumno', iniciales: a.iniciales || inicialesDe(a.nombre), xp: a.xp || 0, racha: a.racha || 0, avatarUrl: a.avatarUrl || null, planTag, email: a.email || '' };
+    } catch (e) {
+      return { nombre: 'Alumno', iniciales: '??', xp: 0, racha: 0, avatarUrl: null, planTag: 'EXPLORADOR', email: '' };
     }
-    if (rol === 'capacitadora') {
-      const list = (g.empresas && g.empresas.length) ? g.empresas : KNOWN_EMPRESAS_FALLBACK;
-      const e = list.find(x => x.id === id) || {};
-      return { nombre: e.nombre || 'Empresa', iniciales: inicialesDe(e.nombre), color: e.color };
-    }
-    return { nombre: '—', iniciales: '??' };
   }
 
   /* ---------------- shell + dispatch ---------------- */
@@ -392,7 +293,7 @@
     if (!_lastRoute) return;
     const { rol, vista, params } = _lastRoute;
     const actor = window.ACTOR;
-    if (!actor) { await renderRoleSelector(); return; }
+    if (!actor) { renderLoginRedirect(); return; }
 
     const app = document.getElementById('app');
     const profile = await getActorProfile(rol, actor.id);
@@ -405,6 +306,19 @@
       notifs = window._state.data.notificaciones;
     }
     const unread = notifs.filter(n => !n.leida).length;
+
+    // Avatar: foto de Google si existe (avatarUrl), si no las iniciales.
+    function avatarHtml(p, cls) {
+      cls = cls || 'avatar';
+      if (p.avatarUrl) {
+        return '<span class="' + cls + '" style="padding:0;overflow:hidden">' +
+          '<img src="' + esc(p.avatarUrl) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" ' +
+          'referrerpolicy="no-referrer" onerror="this.parentNode.textContent=\'' + esc(p.iniciales) + '\'"></span>';
+      }
+      const bg = p.avatarGrad ? 'background:' + esc(p.avatarGrad) : (p.color ? 'background:' + esc(p.color) : '');
+      return '<span class="' + cls + '" style="' + bg + '">' + esc(p.iniciales) + '</span>';
+    }
+    window._avatarHtml = avatarHtml;
 
     function navGroupHtml(g) {
       return '<span class="nav-group-label">' + esc(g.label) + '</span>' +
@@ -422,12 +336,10 @@
     const sidebarHtml =
       '<aside class="side">' +
         '<div class="side-logo"><b>aiLearning</b><span class="chip-academia">ACADEMIA</span></div>' +
-        '<button class="user-card" data-go="' + (isAlumno ? '#/alumno/inicio' : '#') + '">' +
-          '<span class="avatar" style="' + (profile.avatarGrad ? 'background:' + esc(profile.avatarGrad) : (profile.color ? 'background:' + esc(profile.color) : '')) + '">' + esc(profile.iniciales) + '</span>' +
+        '<button class="user-card" data-go="#/alumno/perfil">' +
+          avatarHtml(profile, 'avatar') +
           '<span class="user-card-txt"><span class="user-card-name">' + esc(profile.nombre) + '</span>' +
-          (isAlumno
-            ? '<span class="user-card-sub">' + esc(profile.planTag || 'CORPORATIVO') + '</span>'
-            : '<span class="user-card-sub">' + esc(rol.toUpperCase()) + '</span>') +
+          '<span class="user-card-sub">' + esc(profile.planTag || 'EXPLORADOR') + '</span>' +
           '</span>' +
         '</button>' +
         nav.map(navGroupHtml).join('') +
@@ -436,7 +348,7 @@
             '<span class="icon-l">' + ICON('sun') + '</span><span class="icon-d">' + ICON('moon') + '</span>' +
             '<span>Cambiar tema</span>' +
           '</button>' +
-          '<button class="logout-btn" data-action="switch-role">' + ICON('swap') + 'Cambiar de rol</button>' +
+          '<button class="logout-btn" data-action="logout">' + ICON('swap') + 'Cerrar sesión</button>' +
         '</div>' +
       '</aside>';
 
@@ -446,7 +358,8 @@
         '<span class="mtop-actions">' +
           (isAlumno ? '<span class="chip-xp-sm">' + (profile.xp || 0) + ' XP</span>' : '') +
           '<button class="circle-btn" data-action="toggle-theme">' + ICON('sun', 16) + '</button>' +
-          '<button class="circle-btn avatar-btn" data-go="' + (isAlumno ? '#/alumno/inicio' : '#') + '">' + esc(profile.iniciales) + '</button>' +
+          '<button class="circle-btn avatar-btn" data-go="#/alumno/perfil" style="padding:0;overflow:hidden">' +
+            (profile.avatarUrl ? '<img src="' + esc(profile.avatarUrl) + '" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">' : esc(profile.iniciales)) + '</button>' +
         '</span>' +
       '</div>';
 
@@ -461,7 +374,8 @@
             (unread > 0 ? '<span class="bell-dot"></span>' : '') +
           '</button>' +
           (_ui.notifOpen ? renderNotifPanel(notifs) : '') +
-          '<button class="avatar-head" data-go="' + (isAlumno ? '#/alumno/inicio' : '#') + '">' + esc(profile.iniciales) + '</button>' +
+          '<button class="avatar-head" data-go="#/alumno/perfil" style="padding:0;overflow:hidden">' +
+            (profile.avatarUrl ? '<img src="' + esc(profile.avatarUrl) + '" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">' : esc(profile.iniciales)) + '</button>' +
         '</span>' +
       '</header>';
 
@@ -536,7 +450,8 @@
           _ui.notifOpen = false;
           renderShell({});
         }
-        else if (action === 'switch-role') { clearActor(); window._state = null; go('#/'); }
+        else if (action === 'logout') { window.goToLogout(); }
+        else if (action === 'account') { window.goToAccount(); }
       });
     });
   }
@@ -544,8 +459,7 @@
   /* ---------------- dispatch a vistas ---------------- */
 
   async function dispatchVista(rol, vista, params, mainc) {
-    const registries = { alumno: window.VIEWS_ALUMNO, profesor: window.VIEWS_PROFESOR, capacitadora: window.VIEWS_CAPACITADORA };
-    const registry = registries[rol] || {};
+    const registry = window.VIEWS_ALUMNO || {};
     const fn = registry[vista];
     if (typeof fn === 'function') {
       await fn(mainc, params);

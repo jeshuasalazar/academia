@@ -2,13 +2,30 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const sb = require('./lib/supabase-data');
 
 const app = express();
 const dbPath = path.join(__dirname, 'data', 'db.json');
 
+// Modo backend: 'supabase' (producción, escala) o 'json' (legacy/rollback).
+const SB = sb.isEnabled();
+
+// Envuelve un handler async para capturar errores y responder 500 limpio.
+function ah(fn) {
+  return (req, res) => Promise.resolve(fn(req, res)).catch((err) => {
+    console.error(`[api] ${req.method} ${req.path} error:`, err.message);
+    if (!res.headersSent) res.status(500).json({ error: 'internal', detail: err.message });
+  });
+}
+
+// Guarda endpoints legacy-only (profesor/capacitadora demo) en modo Supabase.
+function legacyOnly(res) {
+  return res.status(501).json({ error: 'no-disponible-en-supabase' });
+}
+
 // Middleware
 app.use(express.static('public'));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' })); // avatares base64 (hasta ~3 MB de imagen)
 
 // ============ DB Management ============
 let db = null;
@@ -130,21 +147,31 @@ function anotarSesion(alumnoId, curso) {
 // ============ API Routes ============
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', ah(async (req, res) => {
+  if (SB) return res.json(await sb.health());
   res.json({ ok: true });
-});
+}));
 
 // GET /api/planes
-app.get('/api/planes', (req, res) => {
+app.get('/api/planes', ah(async (req, res) => {
+  if (SB) return res.json(await sb.getPlanes());
   res.json(db.planes);
-});
+}));
 
 // GET /api/state?alumnoId=
-app.get('/api/state', (req, res) => {
+app.get('/api/state', ah(async (req, res) => {
   const { alumnoId } = req.query;
 
   if (!alumnoId) {
     return res.status(400).json({ error: 'alumnoId required' });
+  }
+
+  if (SB) {
+    const state = await sb.getStateForAlumno(alumnoId);
+    if (!state) return res.status(404).json({ error: 'Alumno no encontrado' });
+    // Actualiza racha por actividad diaria (no bloquea la respuesta).
+    sb.touchActividad(alumnoId).catch(() => {});
+    return res.json(state);
   }
 
   const alumno = getAlumno(alumnoId);
@@ -172,22 +199,32 @@ app.get('/api/state', (req, res) => {
     sesionesVivo: db.sesionesVivo,
     notificaciones: db.notificaciones
   });
-});
+}));
 
 // GET /api/cursos
-app.get('/api/cursos', (req, res) => {
+app.get('/api/cursos', ah(async (req, res) => {
+  if (SB) {
+    const state = await sb.getStateForAlumno(req.query.alumnoId || null).catch(() => null);
+    return res.json(state ? state.cursos : []);
+  }
   const cursosConDetalles = db.cursos.map(curso => ({
     ...curso,
     profesor: getProfesor(curso.profesorId),
     empresa: getEmpresa(curso.empresaId)
   }));
   res.json(cursosConDetalles);
-});
+}));
 
 // GET /api/cursos/:id
-app.get('/api/cursos/:id', (req, res) => {
+app.get('/api/cursos/:id', ah(async (req, res) => {
   const { id } = req.params;
   const { alumnoId } = req.query;
+
+  if (SB) {
+    const curso = await sb.getCurso(id, alumnoId || null);
+    if (!curso) return res.status(404).json({ error: 'Curso no encontrado' });
+    return res.json(curso);
+  }
 
   const curso = getCurso(id);
   if (!curso) {
@@ -205,11 +242,13 @@ app.get('/api/cursos/:id', (req, res) => {
     profesor: getProfesor(curso.profesorId),
     empresa: getEmpresa(curso.empresaId)
   });
-});
+}));
 
 // GET /api/foro/:sesionId
-app.get('/api/foro/:sesionId', (req, res) => {
+app.get('/api/foro/:sesionId', ah(async (req, res) => {
   const { sesionId } = req.params;
+
+  if (SB) return res.json(await sb.getForo(sesionId));
 
   const hilos = db.foro.filter(h => h.sesionId === sesionId);
 
@@ -237,15 +276,20 @@ app.get('/api/foro/:sesionId', (req, res) => {
   });
 
   res.json(hilosConAutor);
-});
+}));
 
 // POST /api/foro/:sesionId
-app.post('/api/foro/:sesionId', (req, res) => {
+app.post('/api/foro/:sesionId', ah(async (req, res) => {
   const { sesionId } = req.params;
   const { autorId, autorTipo, texto } = req.body;
 
-  if (!autorId || !autorTipo || !texto) {
-    return res.status(400).json({ error: 'autorId, autorTipo, texto required' });
+  if (!autorId || !texto) {
+    return res.status(400).json({ error: 'autorId, texto required' });
+  }
+
+  if (SB) {
+    const id = await sb.crearHilo(sesionId, autorId, texto);
+    return res.status(201).json({ id, sesionId, autorId, texto, ts: Date.now(), respuestas: [], resuelto: false });
   }
 
   const nuevoHilo = {
@@ -263,15 +307,20 @@ app.post('/api/foro/:sesionId', (req, res) => {
   saveDb();
 
   res.status(201).json(nuevoHilo);
-});
+}));
 
 // POST /api/foro/:sesionId/:hiloId/responder
-app.post('/api/foro/:sesionId/:hiloId/responder', (req, res) => {
+app.post('/api/foro/:sesionId/:hiloId/responder', ah(async (req, res) => {
   const { sesionId, hiloId } = req.params;
   const { autorId, autorTipo, texto } = req.body;
 
-  if (!autorId || !autorTipo || !texto) {
-    return res.status(400).json({ error: 'autorId, autorTipo, texto required' });
+  if (!autorId || !texto) {
+    return res.status(400).json({ error: 'autorId, texto required' });
+  }
+
+  if (SB) {
+    await sb.responderHilo(hiloId, autorId, texto);
+    return res.status(201).json({ autorId, texto, ts: Date.now() });
   }
 
   const hilo = db.foro.find(h => h.id === hiloId && h.sesionId === sesionId);
@@ -290,11 +339,16 @@ app.post('/api/foro/:sesionId/:hiloId/responder', (req, res) => {
   saveDb();
 
   res.status(201).json(respuesta);
-});
+}));
 
 // POST /api/foro/:sesionId/:hiloId/resolver
-app.post('/api/foro/:sesionId/:hiloId/resolver', (req, res) => {
+app.post('/api/foro/:sesionId/:hiloId/resolver', ah(async (req, res) => {
   const { sesionId, hiloId } = req.params;
+
+  if (SB) {
+    const resuelto = await sb.resolverHilo(hiloId);
+    return res.json({ id: hiloId, resuelto });
+  }
 
   const hilo = db.foro.find(h => h.id === hiloId && h.sesionId === sesionId);
   if (!hilo) {
@@ -305,10 +359,11 @@ app.post('/api/foro/:sesionId/:hiloId/resolver', (req, res) => {
   saveDb();
 
   res.json(hilo);
-});
+}));
 
-// GET /api/desbloqueos/:empresaId
+// GET /api/desbloqueos/:empresaId  (capacitadora — Hito 5; legacy-only por ahora)
 app.get('/api/desbloqueos/:empresaId', (req, res) => {
+  if (SB) return legacyOnly(res);
   const { empresaId } = req.params;
 
   const empresa = getEmpresa(empresaId);
@@ -328,8 +383,9 @@ app.get('/api/desbloqueos/:empresaId', (req, res) => {
   res.json(result);
 });
 
-// POST /api/desbloqueos
+// POST /api/desbloqueos  (capacitadora — Hito 5; legacy-only por ahora)
 app.post('/api/desbloqueos', (req, res) => {
+  if (SB) return legacyOnly(res);
   const { empresaId, cursoId, sesionId, unlock } = req.body;
 
   if (!empresaId || !cursoId || !sesionId || unlock === undefined) {
@@ -365,7 +421,7 @@ app.post('/api/desbloqueos', (req, res) => {
 });
 
 // POST /api/progreso
-app.post('/api/progreso', (req, res) => {
+app.post('/api/progreso', ah(async (req, res) => {
   const { alumnoId, sesionId, pct } = req.body;
 
   if (!alumnoId || !sesionId || pct === undefined) {
@@ -374,6 +430,12 @@ app.post('/api/progreso', (req, res) => {
 
   if (pct < 0 || pct > 100) {
     return res.status(400).json({ error: 'pct must be 0-100' });
+  }
+
+  if (SB) {
+    const r = await sb.setProgreso(alumnoId, sesionId, pct);
+    const perfil = await sb.getAlumno(alumnoId);
+    return res.json({ ok: true, xp: perfil ? perfil.xp : 0, completada: r.completada });
   }
 
   const alumno = getAlumno(alumnoId);
@@ -395,12 +457,20 @@ app.post('/api/progreso', (req, res) => {
   saveDb();
 
   res.json({ ok: true, xp: alumno.xp, completada });
-});
+}));
 
 // GET /api/vivo?cursoId=&empresaId=
-app.get('/api/vivo', (req, res) => {
-  const { cursoId, empresaId } = req.query;
+app.get('/api/vivo', ah(async (req, res) => {
+  const { cursoId, alumnoId } = req.query;
 
+  if (SB) {
+    const state = await sb.getStateForAlumno(alumnoId || null).catch(() => null);
+    let sesiones = state ? state.sesionesVivo : [];
+    if (cursoId) sesiones = sesiones.filter(s => s.cursoId === cursoId);
+    return res.json(sesiones);
+  }
+
+  const { empresaId } = req.query;
   let sesiones = db.sesionesVivo;
 
   if (cursoId) {
@@ -416,10 +486,11 @@ app.get('/api/vivo', (req, res) => {
   }
 
   res.json(sesiones);
-});
+}));
 
-// GET /api/empresa/:id/resumen
+// GET /api/empresa/:id/resumen  (capacitadora — Hito 5; legacy-only por ahora)
 app.get('/api/empresa/:id/resumen', (req, res) => {
+  if (SB) return legacyOnly(res);
   const { id } = req.params;
 
   const empresa = getEmpresa(id);
@@ -472,8 +543,9 @@ app.get('/api/empresa/:id/resumen', (req, res) => {
   });
 });
 
-// GET /api/profesor/:id/resumen
+// GET /api/profesor/:id/resumen  (profesor — Hito 5; legacy-only por ahora)
 app.get('/api/profesor/:id/resumen', (req, res) => {
+  if (SB) return legacyOnly(res);
   const { id } = req.params;
 
   const profesor = getProfesor(id);
@@ -535,6 +607,15 @@ app.get('/api/profesor/:id/resumen', (req, res) => {
   });
 });
 
+// POST /api/perfil/avatar  { alumnoId, dataUrl }  (dataUrl null => quita)
+app.post('/api/perfil/avatar', ah(async (req, res) => {
+  if (!SB) return legacyOnly(res);
+  const { alumnoId, dataUrl } = req.body;
+  if (!alumnoId) return res.status(400).json({ error: 'alumnoId required' });
+  const r = await sb.setAvatar(alumnoId, dataUrl || null);
+  res.json({ ok: true, avatarUrl: r.avatarUrl });
+}));
+
 // ============ SSO desde ailearning.mx ============
 
 // Mapeo plan plataforma → plan del catálogo local (data/seed.js PLANES)
@@ -586,7 +667,7 @@ function inicialesDe(nombre) {
   return ini || 'AL';
 }
 
-app.get('/sso', (req, res) => {
+app.get('/sso', ah(async (req, res) => {
   const secret = process.env.ACADEMIA_SSO_SECRET;
   const token = req.query.token;
 
@@ -609,43 +690,64 @@ app.get('/sso', (req, res) => {
   const email = String(payload.email || '').toLowerCase();
   const plan = SSO_PLAN_MAP[payload.plan] || 'explorador';
 
-  // Find-or-create del alumno (por ssoSub o por email, case-insensitive)
-  let alumno = db.alumnos.find(a => a.ssoSub === payload.sub)
-    || (email && db.alumnos.find(a => a.email && a.email.toLowerCase() === email));
+  let actorId, welcomeNombre, welcomePlan;
 
-  if (!alumno) {
-    const shortHash = crypto.createHash('sha256').update(payload.sub).digest('hex').slice(0, 8);
-    const nombre = payload.name || email || 'Alumno aiLearning';
-    alumno = {
-      id: `al-sso-${shortHash}`,
-      nombre,
-      iniciales: inicialesDe(nombre),
+  if (SB) {
+    // El `sub` del token ES el auth.users.id: el actor de la academia usa ese
+    // uuid directamente (el perfil ya existe desde la plataforma). Guarda avatar
+    // de Google (`picture`) si viene en el token.
+    const alumno = await sb.ensureAlumno({
+      sub: payload.sub,
       email,
-      ssoSub: payload.sub,
-      empresaId: 'emp-ail',
-      tipo: 'interno',
+      name: payload.name,
       plan,
-      xp: 0,
-      racha: 0
-    };
-    db.alumnos.push(alumno);
-    saveDb();
+      picture: payload.picture || payload.avatar_url || null
+    });
+    actorId = alumno.id;
+    welcomeNombre = alumno.nombre;
+    welcomePlan = plan;
   } else {
-    let dirty = false;
-    if (alumno.plan !== plan) { alumno.plan = plan; dirty = true; }
-    if (!alumno.ssoSub) { alumno.ssoSub = payload.sub; dirty = true; }
-    if (!alumno.email && email) { alumno.email = email; dirty = true; }
-    if (dirty) saveDb();
+    // Find-or-create del alumno (por ssoSub o por email, case-insensitive)
+    let alumno = db.alumnos.find(a => a.ssoSub === payload.sub)
+      || (email && db.alumnos.find(a => a.email && a.email.toLowerCase() === email));
+
+    if (!alumno) {
+      const shortHash = crypto.createHash('sha256').update(payload.sub).digest('hex').slice(0, 8);
+      const nombre = payload.name || email || 'Alumno aiLearning';
+      alumno = {
+        id: `al-sso-${shortHash}`,
+        nombre,
+        iniciales: inicialesDe(nombre),
+        email,
+        ssoSub: payload.sub,
+        empresaId: 'emp-ail',
+        tipo: 'interno',
+        plan,
+        xp: 0,
+        racha: 0
+      };
+      db.alumnos.push(alumno);
+      saveDb();
+    } else {
+      let dirty = false;
+      if (alumno.plan !== plan) { alumno.plan = plan; dirty = true; }
+      if (!alumno.ssoSub) { alumno.ssoSub = payload.sub; dirty = true; }
+      if (!alumno.email && email) { alumno.email = email; dirty = true; }
+      if (dirty) saveDb();
+    }
+    actorId = alumno.id;
+    welcomeNombre = alumno.nombre;
+    welcomePlan = alumno.plan;
   }
 
   // Misma clave y forma que usa el switcher del front (public/js/core.js):
   // localStorage.setItem('actor', JSON.stringify({ rol, id }))
-  const actorValue = JSON.stringify({ rol: 'alumno', id: alumno.id });
+  const actorValue = JSON.stringify({ rol: 'alumno', id: actorId });
   const actorLiteral = JSON.stringify(actorValue)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 
   // Bienvenida de una sola vez (leída y borrada por public/js/alumno.js en la vista "inicio")
-  const welcomeValue = JSON.stringify({ nombre: alumno.nombre, plan: alumno.plan });
+  const welcomeValue = JSON.stringify({ nombre: welcomeNombre, plan: welcomePlan });
   const welcomeLiteral = JSON.stringify(welcomeValue)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 
@@ -662,11 +764,17 @@ app.get('/sso', (req, res) => {
 </script>
 </body>
 </html>`);
-});
+}));
 
 // ============ Startup ============
 
-db = loadDb();
+// En modo Supabase el estado vive en Postgres (app stateless). En modo json se
+// carga el db.json legacy en memoria.
+if (!SB) {
+  db = loadDb();
+} else {
+  console.log('[academia] backend: Supabase (stateless)');
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
