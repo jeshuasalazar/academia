@@ -518,14 +518,18 @@
 
     if (sesion.locked) {
       const esPlan = sesion.lockReason === 'plan';
-      root.innerHTML = '<div class="empty-state">🔒 Esta clase está bloqueada.<br>' +
-        (esPlan
-          ? 'Disponible desde el plan ' + esc(sesion.lockPlan || 'Esencial') + '.'
-          : 'Pide a tu capacitadora desbloquear esta clase.') +
+      const esSecuencia = sesion.lockReason === 'secuencia';
+      const msg = esPlan
+        ? 'Disponible desde el plan ' + esc(sesion.lockPlan || 'Esencial') + '.'
+        : (esSecuencia
+            ? 'Completa la lección anterior para desbloquear esta.'
+            : 'Pide a tu capacitadora desbloquear esta clase.');
+      root.innerHTML = '<div class="empty-state">🔒 Esta clase está bloqueada.<br>' + msg +
         '<br><br><button class="btn ' + (esPlan ? 'btn-blue' : 'btn-ghost') + '" ' + (esPlan ? 'data-go="#/alumno/membresia"' : 'data-go="#/alumno/curso/' + esc(cursoId) + '"') + '">' +
         (esPlan ? 'Ver planes →' : '← Volver al curso') + '</button></div>';
       wireCommon(root);
       if (esPlan) toast('Disponible desde el plan ' + (sesion.lockPlan || 'Esencial'));
+      else if (esSecuencia) toast('Completa la lección anterior primero');
       return;
     }
 

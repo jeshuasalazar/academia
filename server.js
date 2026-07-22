@@ -74,8 +74,25 @@ function requireRole(req, res, roles) {
   return u;
 }
 
+// Versión de build para cache-busting de los assets del SPA (JS/CSS).
+const BUILD = (process.env.RAILWAY_GIT_COMMIT_SHA || String(Date.now())).slice(0, 7);
+
+// index.html se sirve SIEMPRE fresco y con ?v=BUILD estampado en cada asset local.
+// Así un deploy nuevo cambia la URL de js/css → invalida el caché del navegador y
+// del CDN (los assets son inmutables por versión), y el alumno ve el código nuevo.
+function servirIndex(req, res) {
+  let html;
+  try { html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8'); }
+  catch (e) { return res.status(500).send('index no disponible'); }
+  html = html.replace(/(src|href)="(js\/[^"?]+\.js|css\/[^"?]+\.css)"/g, `$1="$2?v=${BUILD}"`);
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(html);
+}
+
 // Middleware
-app.use(express.static('public'));
+app.get('/', servirIndex);
+app.get('/index.html', servirIndex);
+app.use(express.static('public', { index: false }));
 app.use(express.json({ limit: '5mb' })); // avatares base64 (hasta ~3 MB de imagen)
 
 // ============ DB Management ============
