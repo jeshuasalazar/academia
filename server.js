@@ -199,8 +199,9 @@ function anotarSesion(alumnoId, curso) {
 
 // Health check
 app.get('/api/health', ah(async (req, res) => {
-  if (SB) return res.json(await sb.health());
-  res.json({ ok: true });
+  const sha = (process.env.RAILWAY_GIT_COMMIT_SHA || 'dev').slice(0, 7); // marcador de deploy
+  if (SB) return res.json(Object.assign({ sha }, await sb.health()));
+  res.json({ ok: true, sha });
 }));
 
 // GET /api/planes

@@ -1,8 +1,11 @@
 # Paquetes de sistema extra para la ETAPA 6 (video) del agente-arnés.
-# ffmpeg/ffprobe: costura de slides+audio en MP4 (spawn desde lib/agente-clases/video.js).
-# dejavu_fonts: glyphs Latin/acentos para @napi-rs/canvas (lib/agente-clases/slides.js
-# usa la pila de fuentes "Arial, DejaVu Sans, Liberation Sans, sans-serif").
-# Si la etapa de video sigue deshabilitada (AGENTE_VIDEO != '1') estos paquetes no se usan,
-# pero no estorban: quitarlos junto con la etapa 6 si algún día se retira.
+# IMPORTANTE: se usan aptPkgs (NO nixPkgs) para NO reemplazar los paquetes que
+# nixpacks detecta solo (Node/npm). Declarar nixPkgs aquí los sobrescribe y rompe
+# `npm ci` con "npm: command not found" (exit 127).
+#   ffmpeg          : costura de slides+audio en MP4 (spawn desde video.js)
+#   fonts-dejavu-core: glyphs Latin/acentos para @napi-rs/canvas (slides.js)
+#   libfontconfig1  : descubrimiento de fuentes en runtime para canvas
+# Si la etapa de video sigue apagada (AGENTE_VIDEO != '1') estos paquetes no se
+# usan en el arranque, pero quedan listos para cuando corra el batch en Railway.
 [phases.setup]
-nixPkgs = ["ffmpeg", "dejavu_fonts"]
+aptPkgs = ["ffmpeg", "fonts-dejavu-core", "libfontconfig1"]
