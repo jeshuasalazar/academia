@@ -230,6 +230,15 @@ main.mainc{width:100%;max-width:1180px;margin:0 auto;box-sizing:border-box;paddi
 
 .accordion{display:flex;flex-direction:column;gap:16px}
 
+/* secciones colapsables del template de 7 secciones (lección) */
+.leccion-sec{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.leccion-sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;font-weight:700;font-size:14px;color:var(--ink)}
+.leccion-sec>summary::-webkit-details-marker{display:none}
+.leccion-sec>summary::after{content:'+';color:var(--mute);font-weight:400;font-size:18px;line-height:1}
+.leccion-sec[open]>summary::after{content:'\2013'}
+.leccion-sec[open]{border-color:rgba(45,136,232,.3)}
+.leccion-sec-body{padding:0 20px 18px;color:var(--body);font-size:14.5px;line-height:1.6;white-space:pre-wrap}
+
 .level-bar-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
 .upsell-card{display:flex;align-items:center;gap:16px;background:var(--panel);color:#F2F4F8;border-radius:18px;padding:18px 22px;flex-wrap:wrap;position:relative;overflow:hidden}

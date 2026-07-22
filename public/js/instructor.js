@@ -140,17 +140,29 @@
             '</div>' +
             '<span id="lec-ia-status" style="color:var(--mute);font-size:12px"></span>' +
           '</div>' +
-          field('Título', input('lec-titulo', 'Ej. Grabación: conciliación con Claude')) +
+          field('Título', input('lec-titulo', 'Ej. Conciliación bancaria con Claude')) +
           '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
             field('Duración (min)', input('lec-dur', '42')) +
-            field('Video de YouTube (ID o URL)', input('lec-video', 'aqz-KE-bpKQ o URL de la grabación')) +
+            field('Origen de la lección', '<select id="lec-origen" class="input" style="font-weight:400">' +
+              '<option value="ia">IA (video explainer)</option>' +
+              '<option value="humano">Humano (grabación en vivo)</option>' +
+              '</select>') +
           '</div>' +
-          field('Descripción', textarea('lec-desc', 'De qué trata esta sesión', 2)) +
-          field('Resumen de la sesión', textarea('lec-resumen', 'Qué se cubrió', 2)) +
-          field('Puntos importantes (uno por línea)', textarea('lec-puntos', 'Conciliación\nPlantillas\nPrompts', 3)) +
-          field('Notas', textarea('lec-notas', 'Notas o instrucciones para el alumno', 2)) +
-          field('Preguntas para pasar de clase (una por línea: pregunta | opción correcta | opción | opción)',
-            textarea('lec-preg', '¿Qué automatizamos? | Conciliación | Nómina | Reportes', 3)) +
+          field('Promesa (lo que va a poder hacer el alumno)', textarea('lec-promesa', 'Al terminar esta lección vas a poder…', 2)) +
+          field('En simple (idea para explicarle a un niño de 5 años)', textarea('lec-simple', 'La versión más sencilla de la idea', 2)) +
+          field('En serio (explicación profesional)', textarea('lec-seria', 'La explicación clara para el trabajo diario', 3)) +
+          field('Con precisión (matices, límites, fundamentos)', textarea('lec-precision', 'Los detalles finos que un experto cuidaría', 3)) +
+          field('Ejemplo guiado', textarea('lec-ejemplo', 'Un caso paso a paso', 3)) +
+          field('Error común', textarea('lec-error', 'Qué suele salir mal y por qué', 2)) +
+          field('Pregunta para pensar', textarea('lec-pensar', 'Una pregunta abierta para reflexionar', 2)) +
+          field('Mini ejercicio (practica)', textarea('lec-ejercicio', 'Algo corto que el alumno pueda hacer ya', 2)) +
+          field('Resumen', textarea('lec-resumen', 'Cierre de la lección en 2-3 líneas', 2)) +
+          field('Comprobación (JSON: [{"q":"..","opciones":["a","b","c"],"correcta":0}])',
+            textarea('lec-comprobacion', '[{"q":"¿Qué automatizamos?","opciones":["Conciliación","Nómina","Reportes"],"correcta":0}]', 3)) +
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+            field('Bunny Library ID (opcional)', input('lec-bunny-lib', 'Ej. 123456')) +
+            field('Bunny Video ID (opcional)', input('lec-bunny-vid', 'Ej. a1b2c3d4-…')) +
+          '</div>' +
           '<div style="display:flex;gap:10px;align-items:center">' +
             '<button class="btn btn-sm" id="lec-guardar" style="background:var(--blue);color:#fff;border:none">Guardar lección</button>' +
             '<button class="btn btn-sm btn-ghost" id="lec-cancel">Cancelar</button>' +
@@ -194,25 +206,47 @@
       root.querySelector('#lec-form').style.display = 'none';
     });
 
-    // generar borrador con IA → rellena los campos del formulario
+    // metadata del último borrador generado (scorecard/aprobado) — se adjunta
+    // al guardar como referencia, no bloquea la edición manual del instructor.
+    let lastGenMeta = null;
+
+    // formatea el scorecard 7-dim del arnés en una línea legible
+    function scorecardMsg(resp) {
+      if (resp.scorecard) {
+        const sc = resp.scorecard;
+        const dims = ['rigor', 'claridad', 'profundidad', 'aplicabilidad', 'fidelidad', 'riesgo', 'simplicidad']
+          .filter(function (k) { return sc[k] != null; })
+          .map(function (k) { return k + ' ' + sc[k]; }).join(' · ');
+        return (resp.aprobado ? 'Aprobado ✓ ' : 'Requiere revisión humana — ') + dims;
+      }
+      return resp.aprobado ? 'Aprobado ✓ (estructura completa).' : 'Requiere revisión humana.';
+    }
+
+    // generar borrador con IA → rellena los 10 campos + comprobación del formulario
     root.querySelector('#lec-ia-btn').addEventListener('click', async function () {
       const tema = root.querySelector('#lec-ia-tema').value.trim();
       if (!tema) { toast('Escribe el tema'); return; }
       const st = root.querySelector('#lec-ia-status'); st.textContent = 'Generando con IA…';
       try {
-        const draft = await API.post('/api/instructor/generar', { tema: tema, curso: curso.titulo, plan: curso.requiredPlan });
-        const s = draft.structured || {};
-        if (draft.titulo) root.querySelector('#lec-titulo').value = draft.titulo;
-        root.querySelector('#lec-desc').value = s.descripcion || '';
-        root.querySelector('#lec-resumen').value = s.resumen || '';
-        root.querySelector('#lec-puntos').value = (s.puntos_clave || []).join('\n');
-        root.querySelector('#lec-notas').value = s.notas || '';
-        root.querySelector('#lec-preg').value = (s.preguntas_pase || []).map(function (q) {
-          const correcta = q.opciones[q.correcta];
-          const otras = q.opciones.filter(function (_, i) { return i !== q.correcta; });
-          return [q.q, correcta].concat(otras).join(' | ');
-        }).join('\n');
-        st.textContent = 'Borrador generado. Revisa y edita antes de guardar.';
+        const resp = await API.post('/api/instructor/generar', { tema: tema, curso: curso.titulo, plan: curso.requiredPlan });
+        const l = resp.leccion || {};
+        if (l.titulo) root.querySelector('#lec-titulo').value = l.titulo;
+        root.querySelector('#lec-promesa').value = l.promesa || '';
+        root.querySelector('#lec-simple').value = l.idea_simple || '';
+        root.querySelector('#lec-seria').value = l.explicacion_seria || '';
+        root.querySelector('#lec-precision').value = l.precision_experta || '';
+        root.querySelector('#lec-ejemplo').value = l.ejemplo_guiado || '';
+        root.querySelector('#lec-error').value = l.error_comun || '';
+        root.querySelector('#lec-pensar').value = l.pregunta_pensar || '';
+        root.querySelector('#lec-ejercicio').value = l.mini_ejercicio || '';
+        root.querySelector('#lec-resumen').value = l.resumen || '';
+        root.querySelector('#lec-comprobacion').value = JSON.stringify(l.comprobacion || [], null, 2);
+        if (l.video && l.video.proveedor === 'bunny') {
+          root.querySelector('#lec-bunny-lib').value = l.video.libraryId || '';
+          root.querySelector('#lec-bunny-vid').value = l.video.videoId || '';
+        }
+        lastGenMeta = { scorecard: resp.scorecard || null, aprobado: resp.aprobado != null ? resp.aprobado : null };
+        st.textContent = 'Borrador generado — ' + scorecardMsg(resp) + ' Revisa y edita antes de guardar.';
       } catch (e) {
         st.textContent = e.message === 'ia-no-configurada'
           ? 'La generación con IA no está configurada (falta ANTHROPIC_API_KEY).'
@@ -224,20 +258,32 @@
     root.querySelector('#lec-guardar').addEventListener('click', async function () {
       const titulo = root.querySelector('#lec-titulo').value.trim();
       if (!titulo) { toast('Escribe el título'); return; }
-      const rawVideo = root.querySelector('#lec-video').value.trim();
-      let video = null;
-      if (rawVideo) {
-        const m = rawVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
-        video = m ? { proveedor: 'youtube', id: m[1] } : (/^[\w-]{11}$/.test(rawVideo) ? { proveedor: 'youtube', id: rawVideo } : { proveedor: 'url', url: rawVideo });
+      const libraryId = root.querySelector('#lec-bunny-lib').value.trim();
+      const videoId = root.querySelector('#lec-bunny-vid').value.trim();
+      const video = (libraryId && videoId) ? { proveedor: 'bunny', libraryId: libraryId, videoId: videoId } : null;
+      let comprobacion = [];
+      const rawComp = root.querySelector('#lec-comprobacion').value.trim();
+      if (rawComp) {
+        try {
+          comprobacion = JSON.parse(rawComp);
+          if (!Array.isArray(comprobacion)) throw new Error('no-array');
+        } catch (e) { toast('La comprobación no es JSON válido (debe ser un arreglo)'); return; }
       }
-      const puntos = root.querySelector('#lec-puntos').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
-      const preguntas = root.querySelector('#lec-preg').value.split('\n').map(function (line) {
-        const parts = line.split('|').map(function (x) { return x.trim(); }).filter(Boolean);
-        if (parts.length < 2) return null;
-        const q = parts[0], correctaTxt = parts[1], resto = parts.slice(2);
-        const opciones = [correctaTxt].concat(resto);
-        return { q: q, opciones: opciones, correcta: 0 };
-      }).filter(Boolean);
+      const structured = {
+        promesa: root.querySelector('#lec-promesa').value.trim(),
+        idea_simple: root.querySelector('#lec-simple').value.trim(),
+        explicacion_seria: root.querySelector('#lec-seria').value.trim(),
+        precision_experta: root.querySelector('#lec-precision').value.trim(),
+        ejemplo_guiado: root.querySelector('#lec-ejemplo').value.trim(),
+        error_comun: root.querySelector('#lec-error').value.trim(),
+        pregunta_pensar: root.querySelector('#lec-pensar').value.trim(),
+        mini_ejercicio: root.querySelector('#lec-ejercicio').value.trim(),
+        resumen: root.querySelector('#lec-resumen').value.trim(),
+        comprobacion: comprobacion,
+        origen: root.querySelector('#lec-origen').value
+      };
+      if (lastGenMeta && lastGenMeta.scorecard) structured.scorecard = lastGenMeta.scorecard;
+      if (lastGenMeta && lastGenMeta.aprobado != null) structured.aprobado = lastGenMeta.aprobado;
       const st = root.querySelector('#lec-status'); st.textContent = 'Guardando…';
       try {
         const res = await API.post('/api/instructor/lecciones', {
@@ -245,13 +291,7 @@
           titulo: titulo,
           dur: parseInt(root.querySelector('#lec-dur').value, 10) || 0,
           video: video,
-          structured: {
-            descripcion: root.querySelector('#lec-desc').value.trim(),
-            resumen: root.querySelector('#lec-resumen').value.trim(),
-            puntos_clave: puntos,
-            notas: root.querySelector('#lec-notas').value.trim(),
-            preguntas_pase: preguntas
-          },
+          structured: structured,
           status: 'published'
         });
         st.textContent = 'Lección guardada. Ya puedes subir material.';

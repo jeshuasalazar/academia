@@ -1,0 +1,8 @@
+# Paquetes de sistema extra para la ETAPA 6 (video) del agente-arnés.
+# ffmpeg/ffprobe: costura de slides+audio en MP4 (spawn desde lib/agente-clases/video.js).
+# dejavu_fonts: glyphs Latin/acentos para @napi-rs/canvas (lib/agente-clases/slides.js
+# usa la pila de fuentes "Arial, DejaVu Sans, Liberation Sans, sans-serif").
+# Si la etapa de video sigue deshabilitada (AGENTE_VIDEO != '1') estos paquetes no se usan,
+# pero no estorban: quitarlos junto con la etapa 6 si algún día se retira.
+[phases.setup]
+nixPkgs = ["ffmpeg", "dejavu_fonts"]

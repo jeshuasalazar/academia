@@ -95,8 +95,13 @@
 
   /* ---------------- video embed ---------------- */
 
-  function videoEmbedHtml(video) {
-    if (!video) return '<div class="player-fallback">Video no disponible.</div>';
+  function videoEmbedHtml(video, origenHumano) {
+    if (!video) {
+      if (origenHumano) {
+        return '<div class="player-fallback">' + ICON('video', 30) + '<span>Grabación en vivo próximamente</span></div>';
+      }
+      return '<div class="player-fallback">Video no disponible.</div>';
+    }
     if (video.proveedor === 'youtube') {
       return '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(video.id) + '?rel=0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
     }
@@ -374,9 +379,29 @@
 
   /* ================= VISTA: leccion ================= */
 
-  // Render amigable del contenido estructurado de una sesión (resumen, puntos
-  // clave, notas, y quiz "preguntas para pasar de clase"). Solo muestra lo que
-  // el instructor haya cargado.
+  // Bloque de quiz interactivo reusable: items = [{q, opciones:[..], correcta:idx}].
+  // Lo usan tanto el template viejo (preguntas_pase) como el nuevo (comprobacion).
+  function quizBlockHtml(items, chipLabel) {
+    if (!items || !items.length) return '';
+    return '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px" data-quiz>' +
+      '<span class="chip-mono">' + esc(chipLabel) + '</span>' +
+      items.map(function (q, qi) {
+        return '<div data-q="' + qi + '" data-correcta="' + (q.correcta != null ? q.correcta : -1) + '">' +
+          '<p class="p" style="font-weight:600;margin:0 0 8px">' + (qi + 1) + '. ' + esc(q.q || q.pregunta || '') + '</p>' +
+          '<div style="display:flex;flex-direction:column;gap:6px">' +
+          (q.opciones || []).map(function (op, oi) {
+            return '<button class="btn btn-ghost btn-sm" style="justify-content:flex-start;text-align:left" data-opt="' + oi + '">' + esc(op) + '</button>';
+          }).join('') +
+          '</div><span class="quiz-fb" style="font-size:12.5px;margin-top:6px;display:none"></span>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+  }
+
+  // Render amigable del contenido estructurado VIEJO de una sesión (Hito 5:
+  // resumen, puntos clave, notas, y quiz "preguntas para pasar de clase").
+  // Solo muestra lo que el instructor haya cargado. NO TOCAR: lecciones viejas
+  // (24 reales en prod) siguen usando esta forma.
   function sesionEstructuraHtml(sesion) {
     const bloques = [];
     if (sesion.resumen) {
@@ -393,27 +418,72 @@
       bloques.push('<div><span class="chip-mono">Notas</span>' +
         '<p class="p" style="margin-top:8px;white-space:pre-wrap">' + esc(sesion.notas) + '</p></div>');
     }
-    let quiz = '';
-    if (sesion.preguntas && sesion.preguntas.length) {
-      quiz = '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px" data-quiz>' +
-        '<span class="chip-mono">Preguntas para pasar de clase</span>' +
-        sesion.preguntas.map(function (q, qi) {
-          return '<div data-q="' + qi + '" data-correcta="' + (q.correcta != null ? q.correcta : -1) + '">' +
-            '<p class="p" style="font-weight:600;margin:0 0 8px">' + (qi + 1) + '. ' + esc(q.q || q.pregunta || '') + '</p>' +
-            '<div style="display:flex;flex-direction:column;gap:6px">' +
-            (q.opciones || []).map(function (op, oi) {
-              return '<button class="btn btn-ghost btn-sm" style="justify-content:flex-start;text-align:left" data-opt="' + oi + '">' + esc(op) + '</button>';
-            }).join('') +
-            '</div><span class="quiz-fb" style="font-size:12.5px;margin-top:6px;display:none"></span>' +
-            '</div>';
-        }).join('') +
-        '</div>';
-    }
+    const quiz = quizBlockHtml(sesion.preguntas, 'Preguntas para pasar de clase');
     if (!bloques.length && !quiz) return '';
     const info = bloques.length
       ? '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">' + bloques.join('') + '</div>'
       : '';
     return info + quiz;
+  }
+
+  // Una sección colapsable del template nuevo (7 secciones). Si el texto viene
+  // vacío no renderiza nada (tolerante a borradores incompletos).
+  function seccionColapsableHtml(titulo, texto, abierta) {
+    if (!texto) return '';
+    return '<details class="leccion-sec"' + (abierta ? ' open' : '') + '>' +
+      '<summary>' + esc(titulo) + '</summary>' +
+      '<div class="leccion-sec-body">' + esc(texto) + '</div>' +
+      '</details>';
+  }
+
+  // Render del template NUEVO de 7 secciones (Hito 6: promesa/idea_simple/
+  // explicacion_seria/precision_experta/ejemplo_guiado/error_comun/
+  // pregunta_pensar/mini_ejercicio/resumen + comprobacion). `sc` es el
+  // structured_content de la lección (o el objeto `leccion` del arnés).
+  function leccionSieteSeccionesHtml(sc) {
+    const bloques = [];
+
+    if (sc.promesa) {
+      bloques.push('<div class="card" style="padding:18px 22px;display:flex;flex-direction:column;gap:6px;border-color:rgba(45,136,232,.35)">' +
+        '<span class="chip-mono">Lo que vas a poder hacer</span>' +
+        '<p class="p" style="font-weight:600;margin:0">' + esc(sc.promesa) + '</p>' +
+        '</div>');
+    }
+
+    const capas = [
+      seccionColapsableHtml('En simple', sc.idea_simple, true),
+      seccionColapsableHtml('En serio', sc.explicacion_seria, false),
+      seccionColapsableHtml('Con precisión', sc.precision_experta, false)
+    ].join('');
+    if (capas) bloques.push('<div style="display:flex;flex-direction:column;gap:10px">' + capas + '</div>');
+
+    const extra = [
+      seccionColapsableHtml('Ejemplo guiado', sc.ejemplo_guiado, false),
+      seccionColapsableHtml('Error común', sc.error_comun, false),
+      seccionColapsableHtml('Para pensar', sc.pregunta_pensar, false),
+      seccionColapsableHtml('Practica', sc.mini_ejercicio, false)
+    ].join('');
+    if (extra) bloques.push('<div style="display:flex;flex-direction:column;gap:10px">' + extra + '</div>');
+
+    if (sc.resumen) {
+      bloques.push('<div class="card" style="padding:18px 22px;display:flex;flex-direction:column;gap:6px">' +
+        '<span class="chip-mono">Resumen</span>' +
+        '<p class="p" style="margin:0">' + esc(sc.resumen) + '</p>' +
+        '</div>');
+    }
+
+    const quiz = quizBlockHtml(sc.comprobacion, 'Comprobación');
+    if (!bloques.length && !quiz) return '';
+    return bloques.join('') + quiz;
+  }
+
+  // Punto único de entrada: decide qué shape renderizar según lo que trae la
+  // sesión. Nunca lanza si faltan campos — cada rama tolera vacíos.
+  function contenidoLeccionHtml(sesion) {
+    const sc = sesion.structured_content || {};
+    const esSieteSecciones = Boolean(sc.idea_simple || sc.explicacion_seria || sc.precision_experta);
+    if (esSieteSecciones) return leccionSieteSeccionesHtml(sc);
+    return sesionEstructuraHtml(sesion);
   }
 
   function wireQuiz(root) {
@@ -460,6 +530,7 @@
     }
 
     const prof = profesorById[curso.profesorId] || {};
+    const sc = sesion.structured_content || {};
     const mods = modulesWithSessions(curso);
     const modActual = mods.find(m => m.sesiones.some(s => s.id === sesion.id)) || mods[0];
     const prevS = idx > 0 ? flat[idx - 1] : null;
@@ -525,7 +596,7 @@
         '<button style="align-self:flex-start;background:none;border:none;color:var(--mute);font-size:13.5px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:7px" data-go="#/alumno/curso/' + esc(cursoId) + '">← ' + esc(curso.titulo) + '</button>' +
         '<div class="grid-player">' +
           '<div style="display:flex;flex-direction:column;gap:16px;min-width:0">' +
-            '<div class="player-wrap">' + videoEmbedHtml(sesion.video) + '</div>' +
+            '<div class="player-wrap">' + videoEmbedHtml(sesion.video, sc.origen === 'humano') + '</div>' +
             '<div style="display:flex;flex-direction:column;gap:10px">' +
               '<span class="chip-mono">' + esc(curso.titulo) + ' · ' + esc(modActual.titulo) + '</span>' +
               '<h1 class="h1" style="font-size:28px">' + esc(sesion.titulo) + '</h1>' +
@@ -536,7 +607,7 @@
               '<button class="btn ' + (completed ? 'btn-ghost' : 'btn-coral') + '" data-complete="' + esc(sesion.id) + '" ' + (completed ? 'disabled' : '') + '>' + (completed ? '✓ Completada' : 'Marcar completada') + '</button>' +
               (nextS ? '<button class="btn btn-ghost" data-go="#/alumno/leccion/' + esc(cursoId) + '/' + esc(nextS.id) + '">Siguiente lección →</button>' : '') +
             '</div>' +
-            sesionEstructuraHtml(sesion) +
+            contenidoLeccionHtml(sesion) +
             '<div class="card" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">' +
               '<span class="chip-mono">Materiales de esta sesión</span>' +
               (state.materialesBloqueados
