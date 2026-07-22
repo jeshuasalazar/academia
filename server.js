@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const sb = require('./lib/supabase-data');
-const ai = require('./lib/ai-content');
+const agente = require('./lib/agente-clases');
 
 const app = express();
 const dbPath = path.join(__dirname, 'data', 'db.json');
@@ -716,15 +716,20 @@ app.post('/api/instructor/lecciones/:id/materiales', ah(async (req, res) => {
   res.status(201).json(await sb.subirMaterial(u.sub, u.role, req.params.id, req.body));
 }));
 
-// POST /api/instructor/generar  { tema, plan?, curso?, contexto? }
-// Autogenera un borrador de lección con IA (Claude Haiku 4.5). No guarda: el
-// instructor revisa y edita antes de publicar con /api/instructor/lecciones.
+// POST /api/instructor/generar  { tema, curso?, fuentes?, nivel?, perfil?, temaSensible?, flagship? }
+// Agente-arnés que construye la clase (plan → generación 3 capas → auditoría +
+// scorecard). No guarda: el instructor revisa y edita antes de publicar.
 app.post('/api/instructor/generar', ah(async (req, res) => {
   if (!SB) return legacyOnly(res);
   const u = requireRole(req, res, ['instructor', 'owner']); if (!u) return;
-  if (!ai.isEnabled()) return res.status(503).json({ error: 'ia-no-configurada' });
+  if (!agente.isEnabled()) return res.status(503).json({ error: 'ia-no-configurada' });
   if (!req.body.tema) return res.status(400).json({ error: 'tema required' });
-  res.json(await ai.generarLeccion(req.body));
+  const { tema, curso, fuentes } = req.body;
+  const out = await agente.construirClase(
+    { tema, curso, fuentes },
+    { nivel: req.body.nivel, perfil: req.body.perfil, temaSensible: req.body.temaSensible, flagship: req.body.flagship }
+  );
+  res.json(out);
 }));
 
 // ============ Owner (alta de usuarios especiales) ============
